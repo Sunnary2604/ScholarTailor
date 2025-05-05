@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ScholarTailor - 学者关系可视化</title>
+    <link rel="stylesheet" href="style.css" />
+    <!-- 引入Cytoscape.js库 -->
+    <script src="lib/cytoscape.min.js"></script>
+    <!-- 引入Font Awesome图标 -->
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css"
+    />
+  </head>
+  <body>
+    <div class="container">
+      <header>
+        <h1>ScholarTailor</h1>
+        <div class="graph-controls-header">
+          <div class="layout-controls">
+            <label for="layout-select">布局:</label>
+            <select id="layout-select">
+              <option value="cose" selected>力导向</option>
+              <option value="circle">圆形</option>
+              <option value="grid">网格</option>
+              <option value="concentric">同心圆</option>
+            </select>
+          </div>
+          <div class="filter-controls">
+            <label>关系:</label>
+            <div class="relation-filters">
+              <label
+                ><input type="checkbox" data-relation="coauthor" checked />
+                合作</label
+              >
+              <label
+                ><input type="checkbox" data-relation="advisor" checked />
+                导师</label
+              >
+              <label
+                ><input type="checkbox" data-relation="colleague" checked />
+                同事</label
+              >
+            </div>
+          </div>
+          <div class="scholar-type-controls">
+            <label
+              ><input type="checkbox" id="toggle-secondary" checked />
+              显示潜在学者</label
+            >
+            <span
+              class="tooltip"
+              title="潜在学者是指从主要学者的合作者中提取的、不在主数据集中的学者"
+              >?</span
+            >
+          </div>
+        </div>
+        <div class="nav-actions">
+          <div class="search-container">
+            <input type="text" id="search-input" placeholder="搜索学者..." />
+            <button id="search-btn">搜索</button>
+          </div>
+          <button id="admin-btn" class="admin-btn" title="管理面板">
+            <i class="fas fa-cog"></i>
+          </button>
+        </div>
+      </header>
+
+      <main>
+        <div class="graph-container">
+          <!-- 图谱展示区，新的控制面板将通过JS动态添加 -->
+          <div id="cy"></div>
+        </div>
+
+        <div class="detail-panel">
+          <!-- 学者详情面板 -->
+          <div class="panel-header">
+            <h2 id="scholar-name">选择学者查看详情</h2>
+            <span id="close-panel">&times;</span>
+          </div>
+
+          <div class="panel-content">
+            <div class="basic-info">
+              <div id="scholar-affiliation" class="info-item">
+                <span class="label">所属机构:</span>
+                <span class="value">-</span>
+              </div>
+              <div id="scholar-interests" class="info-item">
+                <span class="label">研究方向:</span>
+                <span class="value">-</span>
+              </div>
+              <div id="scholar-citations" class="info-item">
+                <span class="label">引用次数:</span>
+                <span class="value">-</span>
+              </div>
+              <div id="scholar-homepage" class="info-item">
+                <span class="label">个人网页:</span>
+                <span class="value">-</span>
+              </div>
+              <div id="scholar-tags" class="info-item">
+                <span class="label">
+                  标签:
+                  <button class="tag-add-btn" id="tag-add-btn" title="添加标签">
+                    <i class="fas fa-plus"></i>
+                  </button>
+                </span>
+                <div class="value scholar-tags">-</div>
+              </div>
+              <div id="scholar-custom" class="info-item">
+                <span class="label">额外信息:</span>
+                <div class="value custom-fields">-</div>
+              </div>
+            </div>
+
+            <div class="publications">
+              <h3>代表性论文</h3>
+              <ul id="publication-list">
+                <li>选择学者查看论文</li>
+              </ul>
+            </div>
+
+            <div class="relationships">
+              <h3>相关学者</h3>
+              <ul id="related-scholars">
+                <li>选择学者查看关系</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </main>
+
+      <footer>
+        <p>ScholarTailor - 学者关系可视化系统 | 基于 Cytoscape.js & Scholarly</p>
+      </footer>
+    </div>
+
+    <!-- 标签管理对话框 -->
+    <div id="tag-dialog" class="tag-dialog">
+      <div class="tag-dialog-header">
+        <span class="tag-dialog-title">管理标签</span>
+        <span class="tag-dialog-close">&times;</span>
+      </div>
+      <div class="tag-dialog-body">
+        <h4>预定义标签</h4>
+        <div class="predefined-tags">
+          <button class="scholar-tag" data-tag="SameField">SameField</button>
+          <button class="scholar-tag" data-tag="Interested">Interested</button>
+          <button class="scholar-tag" data-tag="HighImpact">HighImpact</button>
+        </div>
+
+        <h4>添加自定义标签</h4>
+        <div class="add-custom-tag">
+          <input
+            type="text"
+            id="custom-tag-input"
+            placeholder="输入自定义标签..."
+          />
+          <button id="add-custom-tag-btn" class="btn">添加</button>
+        </div>
+
+        <h4>当前标签</h4>
+        <div id="current-tags" class="scholar-tags">
+          <!-- 当前标签将在这里显示 -->
+        </div>
+      </div>
+      <div class="tag-dialog-footer">
+        <button id="cancel-tag-btn" class="btn">取消</button>
+        <button id="save-tag-btn" class="btn btn-primary">保存</button>
+      </div>
+    </div>
+
+    <!-- 管理面板模态窗口 -->
+    <div id="admin-modal" class="modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>管理面板</h2>
+          <span class="close-modal">&times;</span>
+        </div>
+        <div class="modal-body">
+          <div class="tabs">
+            <button class="tab-btn active" data-tab="tab-scholars">
+              学者管理
+            </button>
+            <button class="tab-btn" data-tab="tab-relationships">
+              关系管理
+            </button>
+          </div>
+
+          <div id="tab-scholars" class="tab-content active">
+            <div class="section-header">
+              <h3>学者数据管理</h3>
+              <span class="last-update"
+                >上次更新: <span id="last-update-time">未知</span></span
+              >
+            </div>
+
+            <div class="scholar-add">
+              <div class="form-group">
+                <label>学者名称:</label>
+                <input
+                  type="text"
+                  id="new-scholar-input"
+                  placeholder="输入学者名称..."
+                />
+              </div>
+              <div class="form-group">
+                <label>Scholar ID (可选):</label>
+                <input
+                  type="text"
+                  id="new-scholar-id"
+                  placeholder="输入Google Scholar ID..."
+                />
+                <div class="hint-text">
+                  填写ID可以精确获取学者，避免重名问题
+                </div>
+              </div>
+              <button id="add-scholar-btn" class="btn">爬取学者</button>
+            </div>
+
+            <div class="scholar-batch">
+              <textarea
+                id="batch-scholars"
+                placeholder="批量添加多位学者，每行一个名字..."
+              ></textarea>
+              <button id="batch-add-btn" class="btn">批量爬取</button>
+            </div>
+
+            <div class="refresh-data">
+              <button id="refresh-all-btn" class="btn btn-warning">
+                更新所有学者数据
+              </button>
+              <div class="checkbox-wrap">
+                <input type="checkbox" id="keep-custom" checked />
+                <label for="keep-custom">保留自定义关系</label>
+              </div>
+            </div>
+
+            <div class="scholar-list-section">
+              <h4>现有学者列表</h4>
+              <div class="search-list-container">
+                <input
+                  type="text"
+                  id="search-scholar-list"
+                  placeholder="搜索学者列表..."
+                />
+                <div class="scholar-list" id="scholar-list">
+                  <div class="loading">加载中...</div>
+                </div>
+              </div>
+            </div>
+            <div class="init-database">
+              <button id="init-db-btn" class="btn btn-danger">
+                初始化数据库
+              </button>
+              <div class="warning-text">
+                警告：此操作将清空所有数据，无法恢复！
+              </div>
+            </div>
+          </div>
+
+          <div id="tab-relationships" class="tab-content">
+            <div class="section-header">
+              <h3>关系管理</h3>
+            </div>
+
+            <div class="relationship-add">
+              <div class="form-group">
+                <label>源学者:</label>
+                <select id="source-scholar"></select>
+              </div>
+              <div class="form-group">
+                <label>关系类型:</label>
+                <select id="relation-type">
+                  <option value="coauthor">合作者</option>
+                  <option value="advisor">导师</option>
+                  <option value="colleague">同事</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>目标学者:</label>
+                <select id="target-scholar"></select>
+              </div>
+              <button id="add-relation-btn" class="btn">添加关系</button>
+            </div>
+
+            <div class="relationship-list-section">
+              <h4>自定义关系列表</h4>
+              <div class="relationship-list" id="relationship-list">
+                <div class="loading">加载中...</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <div class="status-message" id="admin-status"></div>
+          <button id="close-admin-btn" class="btn">关闭</button>
+          <button id="save-changes-btn" class="btn btn-primary">
+            保存更改
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 引入应用脚本 -->
+    <script src="app.js"></script>
+  </body>
+</html>
