@@ -25,7 +25,7 @@ class ScholarDataProcessor:
         self.scholars_dir = scholars_dir
         self.output_file = output_file
         self.scholars = {}  # 学者数据字典（主要学者）
-        self.secondary_scholars = {}  # 潜在学者数据字典（仅作为合作者出现）
+        self.secondary_scholars = {}  # 关联学者数据字典（仅作为合作者出现）
         self.relationships = []  # 关系数据列表
         self.scholar_vis = ScholarVis()  # 初始化ScholarVis实例，用于加载自定义标签
     
@@ -119,7 +119,7 @@ class ScholarDataProcessor:
     
     def _process_coauthors(self, scholar_data):
         """
-        处理合作者关系，包括添加潜在学者
+        处理合作者关系，包括添加关联学者
         
         参数:
             scholar_data (dict): 学者数据
@@ -147,7 +147,7 @@ class ScholarDataProcessor:
                          r['type'] == relationship['type'] for r in self.relationships):
                     self.relationships.append(relationship)
                 
-                # 如果合作者不在主要学者列表中，添加到潜在学者
+                # 如果合作者不在主要学者列表中，添加到关联学者
                 if coauthor_id not in self.scholars and coauthor_id not in self.secondary_scholars:
                     # 处理homepage字段，过滤掉Google用户内容链接
                     homepage = coauthor.get('homepage', '')
@@ -158,12 +158,12 @@ class ScholarDataProcessor:
                         'id': coauthor_id,
                         'name': coauthor.get('name', '未知合作者'),
                         'affiliation': coauthor.get('affiliation', ''),
-                        'is_secondary': True,  # 标记为潜在学者
+                        'is_secondary': True,  # 标记为关联学者
                         'homepage': homepage,  # 使用过滤后的homepage
                         'scholar_url': f"https://scholar.google.com/citations?user={coauthor_id}"
                     }
                     self.secondary_scholars[coauthor_id] = secondary_scholar
-                    print(f"添加潜在学者: {secondary_scholar['name']} ({coauthor_id})")
+                    print(f"添加关联学者: {secondary_scholar['name']} ({coauthor_id})")
     
     def batch_load_scholars(self, scholars_data):
         """
@@ -186,7 +186,7 @@ class ScholarDataProcessor:
             weight (int): 关系权重
             metadata (dict): 关系元数据
         """
-        # 检查主要学者和潜在学者中是否存在这些ID
+        # 检查主要学者和关联学者中是否存在这些ID
         source_exists = source_id in self.scholars or source_id in self.secondary_scholars
         target_exists = target_id in self.scholars or target_id in self.secondary_scholars
         
@@ -293,16 +293,16 @@ class ScholarDataProcessor:
             node = self.create_scholar_node(scholar_id, scholar)
             nodes.append(node)
         
-        # 添加潜在学者节点
+        # 添加关联学者节点
         for scholar_id, scholar in self.secondary_scholars.items():
-            # 检查该潜在学者是否与任何主要学者有关系
+            # 检查该关联学者是否与任何主要学者有关系
             has_relation = any(
                 (r['source'] == scholar_id and r['target'] in self.scholars) or
                 (r['target'] == scholar_id and r['source'] in self.scholars)
                 for r in self.relationships
             )
             
-            # 只添加有关系的潜在学者
+            # 只添加有关系的关联学者
             if has_relation:
                 node = self.create_scholar_node(scholar_id, scholar, is_secondary=True)
                 nodes.append(node)
@@ -360,7 +360,7 @@ class ScholarDataProcessor:
             
         print(f"数据已保存到: {self.output_file}")
         print(f"节点数: {data['meta']['node_count']}, 边数: {data['meta']['edge_count']}")
-        print(f"主要学者: {data['meta']['primary_count']}, 潜在学者: {data['meta']['secondary_count']}")
+        print(f"主要学者: {data['meta']['primary_count']}, 关联学者: {data['meta']['secondary_count']}")
         
         return self.output_file
     

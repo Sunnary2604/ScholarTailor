@@ -957,7 +957,7 @@ footer {
     box-shadow: var(--shadow-md);
 }
 
-/* 修复潜在学者样式 */
+/* 修复关联学者样式 */
 .secondary-scholar {
     background-color: var(--gray-light);
     border-left: 3px solid var(--gray-color);

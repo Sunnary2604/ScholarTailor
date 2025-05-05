@@ -90,7 +90,7 @@ function cacheScholars(data) {
                 node.data.tags = [];
             }
             
-            // 确保设置为潜在学者
+            // 确保设置为关联学者
             node.data.is_secondary = true;
             scholars[node.id] = node.data;
         }
@@ -146,10 +146,10 @@ function initGraph(data) {
             }
         },
         {
-            // 潜在学者节点样式（合作者）
+            // 关联学者节点样式（合作者）
             selector: 'node[group="secondary"]',
             style: {
-                'background-color': '#9ecae1',  // 浅蓝色表示潜在学者
+                'background-color': '#9ecae1',  // 浅蓝色表示关联学者
                 'width': 25,
                 'height': 25,
                 'font-size': '9px',
@@ -300,7 +300,7 @@ function getGraphElements(data) {
                 data: {
                     id: node.id,
                     label: node.label,
-                    group: node.group,  // 添加group属性，用于区分主要和潜在学者
+                    group: node.group,  // 添加group属性，用于区分主要和关联学者
                     ...node.data
                 }
             });
@@ -387,7 +387,7 @@ function setupEventListeners() {
         });
     });
     
-    // 添加显示/隐藏潜在学者的复选框事件监听
+    // 添加显示/隐藏关联学者的复选框事件监听
     const secondaryToggle = document.getElementById('toggle-secondary');
     if (secondaryToggle) {
         secondaryToggle.addEventListener('change', function() {
@@ -548,7 +548,7 @@ function loadScholarList() {
         return;
     }
     
-    // 收集所有主要学者（非潜在学者）
+    // 收集所有主要学者（非关联学者）
     const mainScholars = Object.entries(scholars)
         .filter(([_, scholar]) => !scholar.is_secondary)
         .sort((a, b) => {
@@ -622,7 +622,7 @@ function populateScholarDropdowns() {
     sourceSelect.innerHTML = '';
     targetSelect.innerHTML = '';
     
-    // 获取主要学者（非潜在学者）
+    // 获取主要学者（非关联学者）
     const mainScholars = Object.entries(scholars)
         .filter(([_, scholar]) => !scholar.is_secondary)
         .sort((a, b) => {
@@ -735,7 +735,7 @@ function loadRelationshipList() {
     console.log(`关系列表已加载，共显示 ${relationshipListEl.querySelectorAll('.relationship-item').length} 条记录`);
 }
 
-// 控制潜在学者节点的显示/隐藏
+// 控制关联学者节点的显示/隐藏
 function toggleSecondaryScholars(show) {
     const secondaryNodes = cy.nodes('[group="secondary"]');
     
@@ -956,7 +956,7 @@ function updateDetailPanel(scholarData) {
     // 设置基本信息
     document.getElementById('scholar-name').textContent = scholarData.name || '未知';
     
-    // 处理潜在学者(可能没有完整信息)
+    // 处理关联学者(可能没有完整信息)
     const isSecondary = scholarData.is_secondary === true;
     
     const affiliationEl = document.querySelector('#scholar-affiliation .value');
@@ -964,7 +964,7 @@ function updateDetailPanel(scholarData) {
     
     const interestsEl = document.querySelector('#scholar-interests .value');
     if (isSecondary) {
-        interestsEl.textContent = '信息不完整 (潜在学者)';
+        interestsEl.textContent = '信息不完整 (关联学者)';
     } else {
         // 将研究方向显示为标签
         if (scholarData.interests && scholarData.interests.length > 0) {
@@ -995,8 +995,8 @@ function updateDetailPanel(scholarData) {
     const customFieldsEl = document.querySelector('.custom-fields');
     
     if (isSecondary) {
-        // 潜在学者显示提示信息和爬取按钮
-        customFieldsEl.innerHTML = '<p>这是潜在学者，仅作为合作者出现。可以爬取更多详细数据。</p>';
+        // 关联学者显示提示信息和爬取按钮
+        customFieldsEl.innerHTML = '<p>这是关联学者，仅作为合作者出现。可以爬取更多详细数据。</p>';
         
         // 添加爬取按钮和Google Scholar链接，统一样式
         let buttonsHtml = '<div class="scholar-buttons">';
@@ -1070,7 +1070,7 @@ function updateDetailPanel(scholarData) {
     // 设置论文列表
     const publicationListEl = document.getElementById('publication-list');
     if (isSecondary) {
-        publicationListEl.innerHTML = '<li class="no-pub">潜在学者论文信息不可用</li>';
+        publicationListEl.innerHTML = '<li class="no-pub">关联学者论文信息不可用</li>';
     } else if (scholarData.publications && scholarData.publications.length > 0) {
         let pubHTML = '';
         for (const pub of scholarData.publications) {
@@ -1729,7 +1729,7 @@ function showAdminStatus(message, type = 'info') {
     }
 }
 
-// 爬取潜在学者详细数据
+// 爬取关联学者详细数据
 async function fetchSecondaryScholarData(scholarId, scholarName) {
     if (!scholarId) {
         alert('无效的学者ID');
@@ -1740,7 +1740,7 @@ async function fetchSecondaryScholarData(scholarId, scholarName) {
     const hasScholarId = scholarId.startsWith('scholar_') || scholarId.match(/^[A-Za-z0-9_-]{12}$/);
     
     // 确认爬取
-    if (!confirm(`确定要爬取学者 "${scholarName || scholarId}" 的详细数据吗？这将把该潜在学者转为主要学者。`)) {
+    if (!confirm(`确定要爬取学者 "${scholarName || scholarId}" 的详细数据吗？这将把该关联学者转为主要学者。`)) {
         return;
     }
     
@@ -1964,9 +1964,9 @@ function updateScholarTags(scholarId) {
     const tagsContainer = document.querySelector('#scholar-tags .scholar-tags');
     const scholarData = scholars[scholarId];
     
-    // 如果是潜在学者，显示不可用信息
+    // 如果是关联学者，显示不可用信息
     if (scholarData && scholarData.is_secondary) {
-        tagsContainer.textContent = '潜在学者不支持标签';
+        tagsContainer.textContent = '关联学者不支持标签';
         document.getElementById('tag-add-btn').style.display = 'none'; // 隐藏添加标签按钮
         return;
     }
