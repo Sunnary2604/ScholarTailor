@@ -46,6 +46,11 @@ class ScholarDataProcessor:
         if scholar_id in self.scholars:
             print(f"信息: 学者ID '{scholar_id}' 已存在，将被更新")
         
+        # 如果该学者曾作为关联学者存在，应该将其移除
+        if scholar_id in self.secondary_scholars:
+            print(f"信息: 学者ID '{scholar_id}' 从关联学者升级为主要学者")
+            del self.secondary_scholars[scholar_id]
+        
         # 处理homepage字段，过滤掉Google用户内容链接
         homepage = scholar_data.get('homepage', '')
         if 'googleusercontent' in homepage or 'scholar.google' in homepage:
@@ -287,25 +292,30 @@ class ScholarDataProcessor:
             dict: 包含节点和边的数据结构
         """
         nodes = []
+        uniqueScholars = set()  # 跟踪已添加的学者ID
         
         # 添加主要学者节点
         for scholar_id, scholar in self.scholars.items():
-            node = self.create_scholar_node(scholar_id, scholar)
-            nodes.append(node)
-        
-        # 添加关联学者节点
-        for scholar_id, scholar in self.secondary_scholars.items():
-            # 检查该关联学者是否与任何主要学者有关系
-            has_relation = any(
-                (r['source'] == scholar_id and r['target'] in self.scholars) or
-                (r['target'] == scholar_id and r['source'] in self.scholars)
-                for r in self.relationships
-            )
-            
-            # 只添加有关系的关联学者
-            if has_relation:
-                node = self.create_scholar_node(scholar_id, scholar, is_secondary=True)
+            if scholar_id not in uniqueScholars:
+                node = self.create_scholar_node(scholar_id, scholar)
                 nodes.append(node)
+                uniqueScholars.add(scholar_id)
+        
+        # 添加关联学者节点（仅添加不在主要学者中的）
+        for scholar_id, scholar in self.secondary_scholars.items():
+            if scholar_id not in uniqueScholars:
+                # 检查该关联学者是否与任何主要学者有关系
+                has_relation = any(
+                    (r['source'] == scholar_id and r['target'] in self.scholars) or
+                    (r['target'] == scholar_id and r['source'] in self.scholars)
+                    for r in self.relationships
+                )
+                
+                # 只添加有关系的关联学者
+                if has_relation:
+                    node = self.create_scholar_node(scholar_id, scholar, is_secondary=True)
+                    nodes.append(node)
+                    uniqueScholars.add(scholar_id)
         
         edges = []
         # 只添加至少一端连接到主要学者的边

@@ -54,12 +54,28 @@ class ScholarVis:
             self.custom_data = {'scholars': {}}
     
     def _save_custom_data(self):
-        """保存自定义数据到文件"""
+        """
+        保存自定义数据到文件
+        
+        返回:
+            bool: 保存是否成功
+        """
         try:
+            # 确保目录存在
+            os.makedirs(os.path.dirname(self.custom_data_file), exist_ok=True)
+            
             with open(self.custom_data_file, 'w', encoding='utf-8') as f:
                 json.dump(self.custom_data, f, ensure_ascii=False, indent=2)
+            return True
+        except FileNotFoundError as e:
+            print(f"保存自定义数据出错: 文件路径不存在或无法创建 - {str(e)}")
+            return False
+        except PermissionError as e:
+            print(f"保存自定义数据出错: 权限不足 - {str(e)}")
+            return False
         except Exception as e:
-            print(f"保存自定义数据时出错: {str(e)}")
+            print(f"保存自定义数据出错: {str(e)}")
+            return False
     
     def update_scholar_tags(self, scholar_id, tags):
         """
@@ -68,15 +84,23 @@ class ScholarVis:
         参数:
             scholar_id (str): 学者ID
             tags (list): 标签列表
+            
+        返回:
+            bool: 更新是否成功
         """
-        if 'scholars' not in self.custom_data:
-            self.custom_data['scholars'] = {}
-        
-        if scholar_id not in self.custom_data['scholars']:
-            self.custom_data['scholars'][scholar_id] = {}
-        
-        self.custom_data['scholars'][scholar_id]['tags'] = tags
-        self._save_custom_data()
+        try:
+            if 'scholars' not in self.custom_data:
+                self.custom_data['scholars'] = {}
+            
+            if scholar_id not in self.custom_data['scholars']:
+                self.custom_data['scholars'][scholar_id] = {}
+            
+            self.custom_data['scholars'][scholar_id]['tags'] = tags
+            self._save_custom_data()
+            return True
+        except Exception as e:
+            print(f"更新学者标签时出错: {str(e)}")
+            return False
     
     def get_scholar_tags(self, scholar_id):
         """

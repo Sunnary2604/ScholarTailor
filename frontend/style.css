@@ -3,6 +3,9 @@
     margin: 0;
     padding: 0;
     box-sizing: border-box;
+    white-space: normal !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
 }
 
 :root {
@@ -142,9 +145,11 @@ main {
     flex: 1;
     display: flex;
     flex-direction: column;
-    height: calc(100vh - 120px);
+    height: calc(100vh - 140px);
     overflow: hidden;
     padding: 0;
+    margin-top: 10px;
+    border-radius: 10px;
     position: relative;
 }
 
@@ -157,7 +162,48 @@ main {
     overflow: hidden;
 }
 
-/* 图谱控制区域 */
+/* 顶部工具栏样式 */
+.top-toolbar {
+    position: relative;
+    z-index: 10;
+    background: rgba(255, 255, 255, 0.95);
+    padding: 8px 15px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.toolbar-left, .toolbar-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.toolbar-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-right: 1px solid rgba(0, 0, 0, 0.1);
+    padding-right: 15px;
+    font-size: 0.85rem;
+}
+
+.toolbar-group:last-child {
+    border-right: none;
+    padding-right: 0;
+}
+
+.toolbar-label {
+    font-weight: 500;
+    color: var(--dark-color);
+    font-size: 0.85rem;
+}
+
+/* 图谱控制区域 - 保留作为备用，合并重复定义 */
 .graph-controls {
     position: absolute;
     top: 20px;
@@ -171,9 +217,10 @@ main {
     flex-direction: column;
     gap: 15px;
     width: 250px;
+    display: none; /* 隐藏旧控制面板 */
 }
 
-/* 图谱控制头部样式 */
+/* 图谱控制头部样式 - 将内容移至顶部工具栏，保留类以兼容 */
 .graph-controls-header {
     display: flex;
     align-items: center;
@@ -182,6 +229,7 @@ main {
     padding: 0.5rem 0.8rem;
     border-radius: var(--border-radius-sm);
     flex-wrap: wrap;
+    display: none; /* 隐藏旧控制头部 */
 }
 
 .layout-controls, .filter-controls, .scholar-type-controls {
@@ -197,13 +245,12 @@ main {
 }
 
 #layout-select {
-    padding: 0.2rem 0.5rem;
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    padding: 5px 8px;
+    border: 1px solid #ddd;
     border-radius: var(--border-radius-sm);
-    background-color: rgba(255, 255, 255, 0.1);
-    color: white;
+    background-color: white;
     font-size: 0.85rem;
-    cursor: pointer;
+    outline: none;
 }
 
 .relation-filters {
@@ -217,16 +264,14 @@ main {
     font-size: 0.85rem;
     display: flex;
     align-items: center;
-    cursor: pointer;
-    color: rgba(255, 255, 255, 0.9);
-}
-
-.scholar-type-controls {
+    gap: 4px;
+    font-size: 0.85rem;
     white-space: nowrap;
+    color: var(--dark-color);
 }
 
 .relation-filters input[type="checkbox"], .scholar-type-controls input[type="checkbox"] {
-    margin-right: 0.3rem;
+    margin: 0;
     cursor: pointer;
 }
 
@@ -275,21 +320,21 @@ main {
     background-color: white;
     box-shadow: var(--shadow-sm);
     z-index: 5;
+    margin: 0.5rem;
     display: flex;
     flex-direction: column;
     transition: transform 0.3s ease;
-    border-radius: 0;
+    border-radius: 10px;
     overflow: hidden;
-    height: calc(100vh - 80px);
+    height: calc(100vh - 140px);
 }
 
 .panel-header {
-    background-color: var(--dark-color);
-    color: white;
-    padding: 1rem 1.2rem;
+    padding: 10px 15px;
     display: flex;
-    justify-content: space-between;
-    align-items: center;
+    justify-content: flex-end; /* 关闭按钮靠右 */
+    background-color: var(--gray-light);
+    border-bottom: 1px solid #ddd;
 }
 
 .panel-header h2 {
@@ -313,21 +358,23 @@ main {
 
 .panel-content {
     padding: 1.2rem;
-    overflow-y: auto;
+    overflow-y: auto !important;
     flex: 1;
     height: 100%;
-    max-height: calc(100vh - 200px);
+    max-height: calc(100vh - 20px);
 }
 
 .basic-info {
-    margin-bottom: 1.5rem;
-    background-color: var(--gray-light);
-    padding: 1.2rem;
+    margin-bottom: 1.8rem;
+    background-color: white;
+    padding: 1.5rem;
     border-radius: var(--border-radius-md);
+    box-shadow: var(--shadow-sm);
 }
 
 .info-item {
-    margin-bottom: 1rem;
+    margin-bottom: 10px;
+    line-height: 1.5;
 }
 
 .info-item:last-child {
@@ -335,20 +382,15 @@ main {
 }
 
 .info-item .label {
-    font-weight: 600;
-    color: var(--dark-color);
-    display: block;
-    margin-bottom: 0.3rem;
-    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--gray-dark);
+    margin-right: 8px;
 }
 
 .info-item .value {
     display: block;
-    color: #333;
-    background-color: white;
-    padding: 0.5rem 0.8rem;
-    border-radius: var(--border-radius-sm);
-    border-left: 3px solid var(--primary-color);
+    margin-top: 3px;
+    word-break: break-word;
 }
 
 .custom-fields {
@@ -391,11 +433,31 @@ main {
     border-left: 3px solid var(--primary-color);
 }
 
-.pub-title {
-    color: var(--dark-color);
+/* 论文标题样式 */
+.publication-title {
     font-weight: 500;
     margin-bottom: 0.5rem;
     line-height: 1.4;
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+}
+
+/* 论文发表信息样式 */
+.publication-venue {
+    font-size: 0.9rem;
+    color: var(--gray-dark);
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+}
+
+/* 引用计数样式 */
+.citation-count {
+    display: inline-block;
+    margin-left: 8px;
+    color: #e67e22;
+    font-weight: 500;
 }
 
 .pub-meta {
@@ -472,7 +534,7 @@ main {
     box-shadow: var(--shadow-md);
 }
 
-/* 关系徽章更新 */
+/* 关系徽章 - 合并重复定义 */
 .relation-badge {
     display: inline-block;
     padding: 2px 6px;
@@ -482,33 +544,39 @@ main {
     color: #333;
     margin: 0 5px;
     border: 1px solid #ddd;
+    border-radius: var(--border-radius-sm);
 }
 
-.relation-badge.relation-coauthor {
+/* 合并不同类型的徽章样式 */
+.relation-badge.relation-coauthor, .relation-badge.coauthor {
     background-color: rgba(107, 174, 214, 0.2);
-    color: #2980b9;
+    color: #fff;
     border-color: #6baed6;
 }
 
-.relation-badge.relation-advisor {
+.relation-badge.relation-advisor, .relation-badge.advisor {
     background-color: rgba(253, 141, 60, 0.2);
-    color: #d35400;
+    color: #fff;
     border-color: #fd8d3c;
 }
 
-.relation-badge.relation-colleague {
+.relation-badge.relation-colleague, .relation-badge.colleague {
     background-color: rgba(49, 163, 84, 0.2);
-    color: #27ae60;
+    color: #fff;
     border-color: #31a354;
 }
 
-/* 关系项样式改进 */
+/* 关系项样式改进 - 合并重复定义 */
 .relationship-item {
     padding: 12px;
     background-color: rgba(255, 255, 255, 0.6);
     border-radius: 6px;
     margin-bottom: 8px;
     transition: all 0.2s;
+    border-bottom: 1px solid #f0f0f0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
 
 .relationship-item:hover {
@@ -516,11 +584,13 @@ main {
     box-shadow: 0 2px 5px rgba(0,0,0,0.1);
 }
 
+/* 合并relationship-detail样式 */
 .relationship-detail {
     display: flex;
     align-items: center;
     flex-wrap: wrap;
     gap: 8px;
+    flex: 1;
 }
 
 /* 页脚 */
@@ -1179,7 +1249,7 @@ footer {
     font-size: 0.75rem;
     padding: 0.1rem 0.5rem;
     border-radius: var(--border-radius-sm);
-    border: 1px solid rgba(49, 130, 189, 0.2);
+    border: 1px solid rgba(49, 130, 189, 0.3);
     cursor: pointer;
     transition: all 0.2s ease;
 }
@@ -1209,22 +1279,23 @@ footer {
     border-color: var(--primary-color);
 }
 
-.scholar-tag[data-tag="SameField"] {
+/* 特定标签类型的样式 */
+.scholar-tag[data-tag="SameField"], .filter-tag[data-tag="SameField"] {
     background-color: rgba(46, 204, 113, 0.1);
     color: #27ae60;
     border-color: rgba(46, 204, 113, 0.3);
 }
 
-.scholar-tag[data-tag="Interested"] {
+.scholar-tag[data-tag="Interested"], .filter-tag[data-tag="Interested"] {
     background-color: rgba(155, 89, 182, 0.1);
     color: #9b59b6;
-    border-color: rgba(155, 89, 182, 0.2);
+    border-color: rgba(155, 89, 182, 0.3);
 }
 
-.scholar-tag[data-tag="HighImpact"] {
+.scholar-tag[data-tag="HighImpact"], .filter-tag[data-tag="HighImpact"] {
     background-color: rgba(192, 57, 43, 0.1);
     color: #c0392b;
-    border-color: rgba(192, 57, 43, 0.2);
+    border-color: rgba(192, 57, 43, 0.3);
 }
 
 /* 添加标签高亮样式 */
@@ -1236,25 +1307,66 @@ footer {
 /* 添加标签筛选控制区 */
 .tag-filters {
     display: flex;
-    flex-direction: column;
-    gap: 10px;
-    margin-top: 0;
-    padding: 12px;
-    background-color: rgba(255, 255, 255, 0.8);
-    border-radius: var(--border-radius-sm);
-    border: 1px solid rgba(0, 0, 0, 0.05);
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+    background: transparent;
+    border: none;
+    padding: 0;
 }
 
-.tag-filters label {
-    font-weight: 600;
-    font-size: 0.9rem;
-    margin-bottom: 5px;
-    color: var(--dark-color);
-}
-
+/* 过滤标签容器 */
 .filter-tags-container {
+    display: flex;
+    flex-wrap: wrap;
+    flex-direction: row;
+    align-items: center;
     gap: 6px;
-    margin-top: 5px;
+    margin: 0;
+}
+
+/* 筛选标签样式 */
+.filter-tag {
+    cursor: pointer;
+    transition: all 0.2s ease;
+    padding: 3px 8px;
+    opacity: 0.7;
+    border: 1px solid rgba(49, 130, 189, 0.3);
+    font-size: 0.85rem; /* 统一字体大小 */
+    background-color: rgba(49, 130, 189, 0.1);
+    color: var(--primary-color);
+    border-radius: var(--border-radius-sm);
+}
+
+.filter-tag:hover {
+    transform: translateY(-2px);
+    opacity: 0.9;
+}
+
+.filter-tag.active {
+    opacity: 1;
+    border-width: 2px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    transform: translateY(-1px);
+}
+
+/* 为不同标签类型设置激活状态样式 */
+.filter-tag.active[data-tag="SameField"] {
+    background-color: rgba(46, 204, 113, 0.5);
+    color: #27ae60;
+    border-color: #27ae60;
+}
+
+.filter-tag.active[data-tag="Interested"] {
+    background-color: rgba(155, 89, 182, 0.5);
+    color: #8e44ad;
+    border-color: #8e44ad;
+}
+
+.filter-tag.active[data-tag="HighImpact"] {
+    background-color: rgba(192, 57, 43, 0.5);
+    color: #c0392b;
+    border-color: #c0392b;
 }
 
 /* 返回全局视图的按钮 */
@@ -1383,54 +1495,6 @@ footer {
     color: #666;
 }
 
-/* 过滤标签容器 */
-.filter-tags-container {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    margin-top: 8px;
-}
-
-/* 筛选标签样式 */
-.filter-tag {
-    cursor: pointer;
-    transition: all 0.2s ease;
-    padding: 3px 8px;
-    opacity: 0.7;
-    border: 1px solid rgba(49, 130, 189, 0.3);
-}
-
-.filter-tag:hover {
-    transform: translateY(-2px);
-    opacity: 0.9;
-}
-
-.filter-tag.active {
-    opacity: 1;
-    border-width: 2px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    transform: translateY(-1px);
-}
-
-/* 为不同标签类型设置激活状态样式 */
-.filter-tag.active[data-tag="SameField"] {
-    background-color: rgba(46, 204, 113, 0.5);
-    color: #27ae60;
-    border-color: #27ae60;
-}
-
-.filter-tag.active[data-tag="Interested"] {
-    background-color: rgba(155, 89, 182, 0.5);
-    color: #8e44ad;
-    border-color: #8e44ad;
-}
-
-.filter-tag.active[data-tag="HighImpact"] {
-    background-color: rgba(192, 57, 43, 0.5);
-    color: #c0392b;
-    border-color: #c0392b;
-}
-
 /* 初始化数据库区域 */
 .init-database {
     display: flex;
@@ -1456,4 +1520,178 @@ footer {
 
 .btn-danger:hover {
     background-color: #c0392b;
+}
+
+/* 学者头像样式 */
+.info-header {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 15px;
+}
+
+/* 合并重复的学者头像容器样式 */
+.scholar-avatar-container {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    flex-shrink: 0;
+    background-color: #f0f0f0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid var(--primary-color);
+    margin-right: 15px;
+}
+
+#scholar-avatar {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.scholar-basic-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+/* 学者详情头部布局 */
+.scholar-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid #eee;
+}
+
+/* 合并重复的scholar-name样式 */
+#scholar-name {
+    font-size: 1.6rem;
+    margin: 0;
+    color: var(--dark-color);
+    font-weight: 600;
+}
+
+/* 重新设计的额外信息区域 */
+.custom-fields-container {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    background-color: #f9f9f9;
+    border-radius: var(--border-radius-md);
+    padding: 15px;
+    margin-top: 8px;
+}
+
+.custom-fields-content {
+    font-size: 0.9rem;
+    color: var(--gray-dark);
+    line-height: 1.5;
+    margin-top: 10px;
+}
+
+/* 修改按钮样式使其更突出 */
+.scholar-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin: 0;
+}
+
+.scholar-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background-color: var(--primary-color);
+    color: white;
+    padding: 8px 16px;
+    border-radius: var(--border-radius-sm);
+    font-size: 0.9rem;
+    text-decoration: none;
+    border: none;
+    cursor: pointer;
+    transition: background-color 0.2s, transform 0.1s;
+    flex: 1;
+    justify-content: center;
+    min-width: 150px;
+}
+
+.scholar-button:hover {
+    background-color: var(--primary-dark);
+    transform: translateY(-2px);
+}
+
+/* 为不同类型的按钮设置不同的颜色 */
+.scholar-button.gs-button {
+    background-color: #4285F4; /* Google Scholar蓝色 */
+}
+
+.scholar-button.gs-button:hover {
+    background-color: #3367d6;
+}
+
+.scholar-button.fetch-button {
+    background-color: var(--secondary-color);
+}
+
+.scholar-button.fetch-button:hover {
+    background-color: #2a8a46;
+}
+
+/* 其他细节优化 */
+.basic-info {
+    margin-bottom: 1.8rem;
+    background-color: white;
+    padding: 1.5rem;
+    border-radius: var(--border-radius-md);
+    box-shadow: var(--shadow-sm);
+}
+
+.scholar-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid #eee;
+}
+
+.scholar-avatar-container {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    overflow: hidden !important;
+    margin-right: 15px;
+    flex-shrink: 0;
+    border: 2px solid var(--primary-color);
+}
+
+#scholar-name {
+    font-size: 1.6rem;
+    margin: 0;
+    color: var(--dark-color);
+    font-weight: 600;
+}
+
+/* 全局：确保文本不被省略（除非特殊情况下需要省略） */
+.no-ellipsis,
+#scholar-name,
+#detail-panel .value,
+.publication-title,
+.publication-venue,
+.scholar-tag,
+.relation-name,
+.relation-type,
+.relation-type span,
+.relation-interests span,
+.relation-affiliation,
+.interest-tag,
+.interest-mini-tag,
+.custom-fields-content dt,
+.custom-fields-content dd {
+  white-space: normal !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
 } 

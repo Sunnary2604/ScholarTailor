@@ -12,50 +12,16 @@
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css"
     />
+    <!-- 引入fcose布局所需的依赖库 -->
+    <script src="https://unpkg.com/layout-base/layout-base.js"></script>
+    <script src="https://unpkg.com/cose-base/cose-base.js"></script>
+    <!-- 引入fcose布局插件 -->
+    <script src="https://unpkg.com/cytoscape-fcose/cytoscape-fcose.js"></script>
   </head>
   <body>
     <div class="container">
       <header>
         <h1>ScholarTailor</h1>
-        <div class="graph-controls-header">
-          <div class="layout-controls">
-            <label for="layout-select">布局:</label>
-            <select id="layout-select">
-              <option value="cose" selected>力导向</option>
-              <option value="circle">圆形</option>
-              <option value="grid">网格</option>
-              <option value="concentric">同心圆</option>
-            </select>
-          </div>
-          <div class="filter-controls">
-            <label>关系:</label>
-            <div class="relation-filters">
-              <label
-                ><input type="checkbox" data-relation="coauthor" checked />
-                合作</label
-              >
-              <label
-                ><input type="checkbox" data-relation="advisor" checked />
-                导师</label
-              >
-              <label
-                ><input type="checkbox" data-relation="colleague" checked />
-                同事</label
-              >
-            </div>
-          </div>
-          <div class="scholar-type-controls">
-            <label
-              ><input type="checkbox" id="toggle-secondary" checked />
-              显示关联学者</label
-            >
-            <span
-              class="tooltip"
-              title="关联学者是指从主要学者的合作者中提取的、不在主数据集中的学者"
-              >?</span
-            >
-          </div>
-        </div>
         <div class="nav-actions">
           <div class="search-container">
             <input type="text" id="search-input" placeholder="搜索学者..." />
@@ -75,23 +41,27 @@
 
         <div class="detail-panel">
           <!-- 学者详情面板 -->
-          <div class="panel-header">
-            <h2 id="scholar-name">选择学者查看详情</h2>
-            <span id="close-panel">&times;</span>
-          </div>
+
 
           <div class="panel-content">
             <div class="basic-info">
+              <div class="scholar-header">
+                <div class="scholar-avatar-container">
+                  <img id="scholar-avatar" src="" alt="学者头像" onerror="this.src='https://placehold.co/300x300?text=U'; this.onerror=null;">
+                </div>
+                <h2 id="scholar-name">选择学者查看详情</h2>
+              </div>
+              
               <div id="scholar-affiliation" class="info-item">
                 <span class="label">所属机构:</span>
                 <span class="value">-</span>
               </div>
-              <div id="scholar-interests" class="info-item">
-                <span class="label">研究方向:</span>
-                <span class="value">-</span>
-              </div>
               <div id="scholar-citations" class="info-item">
                 <span class="label">引用次数:</span>
+                <span class="value">-</span>
+              </div>
+              <div id="scholar-interests" class="info-item">
+                <span class="label">研究方向:</span>
                 <span class="value">-</span>
               </div>
               <div id="scholar-homepage" class="info-item">
@@ -109,7 +79,19 @@
               </div>
               <div id="scholar-custom" class="info-item">
                 <span class="label">额外信息:</span>
-                <div class="value custom-fields">-</div>
+                <div class="value custom-fields-container">
+                  <div class="scholar-buttons">
+                    <button id="fetch-scholar-btn" class="scholar-button">
+                      <i class="fas fa-download"></i> 爬取详细数据
+                    </button>
+                    <a href="#" id="scholar-gs-link" class="scholar-button">
+                      <i class="fas fa-graduation-cap"></i> Google Scholar
+                    </a>
+                  </div>
+                  <div class="custom-fields-content">
+                    <p>这是关联学者，仅作为合作者出现。可以爬取更多详细数据。</p>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -205,14 +187,14 @@
                 />
               </div>
               <div class="form-group">
-                <label>Scholar ID (可选):</label>
+                <label>Scholar ID 或页面链接:</label>
                 <input
                   type="text"
                   id="new-scholar-id"
-                  placeholder="输入Google Scholar ID..."
+                  placeholder="输入Google Scholar ID或完整页面链接..."
                 />
                 <div class="hint-text">
-                  填写ID可以精确获取学者，避免重名问题
+                  可直接粘贴Scholar页面链接，系统会自动提取ID
                 </div>
               </div>
               <button id="add-scholar-btn" class="btn">爬取学者</button>

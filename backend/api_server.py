@@ -61,6 +61,9 @@ def save_custom_relationships(relationships):
 
 # 重新处理数据并生成可视化JSON
 def regenerate_data():
+    """重新处理数据并生成可视化JSON"""
+    global processor
+    
     # 重新加载所有数据
     processor.scholars = {}
     processor.secondary_scholars = {}
@@ -70,10 +73,14 @@ def regenerate_data():
     processor.load_all_scholars_from_dir()
     
     # 加载自定义关系
-    processor.load_custom_relationships(CUSTOM_RELATIONSHIPS_FILE)
+    if os.path.exists(CUSTOM_RELATIONSHIPS_FILE):
+        processor.load_custom_relationships(CUSTOM_RELATIONSHIPS_FILE)
     
-    # 保存为JSON文件
-    return processor.save_to_json()
+    # 保存为JSON文件并返回结果
+    output_file = processor.save_to_json()
+    print(f"已重新生成数据文件: {output_file}")
+    
+    return output_file
 
 # 静态文件服务
 @app.route('/', defaults={'path': 'index.html'})
@@ -417,10 +424,13 @@ def update_scholar_tags():
     scholar_id = data['id']
     tags = data['tags']
     
-    # 使用ScholarVis类保存标签
-    scholar_vis.update_scholar_tags(scholar_id, tags)
-    
     try:
+        # 保存标签并检查结果
+        result = scholar_vis.update_scholar_tags(scholar_id, tags)
+        if not result:
+            print(f"ScholarVis.update_scholar_tags返回失败，学者ID: {scholar_id}")
+            return jsonify({'success': False, 'error': '更新标签失败，可能是权限问题或文件系统错误'}), 500
+        
         # 找到对应的JSON文件
         scholar_files = os.listdir(SCHOLARS_DIR)
         target_file = None
@@ -431,37 +441,37 @@ def update_scholar_tags():
                 break
         
         if target_file:
-            # 读取文件
-            with open(target_file, 'r', encoding='utf-8') as f:
-                scholar_data = json.load(f)
-            
-            # 确保custom_fields字段存在
-            if 'custom_fields' not in scholar_data:
-                scholar_data['custom_fields'] = {}
-            
-            # 更新标签字段
-            scholar_data['custom_fields']['tags'] = ','.join(tags)
-            scholar_data['tags'] = tags  # 直接保存标签列表，方便前端使用
-            
-            # 写回文件
-            with open(target_file, 'w', encoding='utf-8') as f:
-                json.dump(scholar_data, f, ensure_ascii=False, indent=2)
-            
-            # 更新处理器中的学者数据
-            if scholar_id in processor.scholars:
-                processor.scholars[scholar_id]['custom_fields'] = scholar_data['custom_fields']
-                processor.scholars[scholar_id]['tags'] = tags
-            
-            # 重新生成数据
-            regenerate_data()
-            
-            return jsonify({
-                'success': True, 
-                'message': '成功更新标签'
-            })
+            try:
+                # 读取文件
+                with open(target_file, 'r', encoding='utf-8') as f:
+                    scholar_data = json.load(f)
+                
+                # 确保custom_fields字段存在
+                if 'custom_fields' not in scholar_data:
+                    scholar_data['custom_fields'] = {}
+                
+                # 更新标签字段
+                scholar_data['custom_fields']['tags'] = ','.join(tags)
+                scholar_data['tags'] = tags  # 直接保存标签列表，方便前端使用
+                
+                # 写回文件
+                with open(target_file, 'w', encoding='utf-8') as f:
+                    json.dump(scholar_data, f, ensure_ascii=False, indent=2)
+                
+                # 仅调用一次数据重生成
+                regenerate_data()
+                
+                return jsonify({
+                    'success': True, 
+                    'message': '成功更新标签'
+                })
+            except Exception as e:
+                print(f"更新学者文件出错: {str(e)}")
+                return jsonify({'success': False, 'error': f'更新学者文件失败: {str(e)}'}), 500
         else:
             return jsonify({'success': False, 'error': '未找到学者数据文件'}), 404
     except Exception as e:
+        print(f"更新标签出错: {str(e)}")  # 添加错误日志
         return jsonify({'success': False, 'error': str(e)}), 500
 
 # API端点：初始化数据库
