@@ -26,11 +26,49 @@ function setNoEllipsis(element) {
 }
 
 // 检查是否已经引入了布局库的相关脚本
-function loadScript(url, callback) {
+function loadScript(url, callback, errorCallback) {
+  // 检查脚本是否已经加载
+  const existingScript = document.querySelector(`script[src="${url}"]`);
+  if (existingScript) {
+    console.log(`脚本已存在: ${url}`);
+    // 如果脚本已加载，直接调用回调
+    if (callback) callback();
+    return;
+  }
+  
+  console.log(`加载脚本: ${url}`);
   const script = document.createElement('script');
   script.type = 'text/javascript';
   script.src = url;
-  script.onload = callback;
+  
+  // 设置超时处理
+  const timeoutId = setTimeout(() => {
+    console.error(`脚本加载超时: ${url}`);
+    if (errorCallback) errorCallback(new Error(`加载超时: ${url}`));
+  }, 10000); // 10秒超时
+  
+  // 加载成功回调
+  script.onload = function() {
+    clearTimeout(timeoutId);
+    console.log(`脚本加载成功: ${url}`);
+    if (callback) callback();
+  };
+  
+  // 加载错误处理
+  script.onerror = function(e) {
+    clearTimeout(timeoutId);
+    console.error(`脚本加载失败: ${url}`, e);
+    
+    // 尝试使用备用CDN
+    if (url.includes('unpkg.com')) {
+      const fallbackUrl = url.replace('unpkg.com', 'cdn.jsdelivr.net/npm');
+      console.log(`尝试备用CDN: ${fallbackUrl}`);
+      loadScript(fallbackUrl, callback, errorCallback);
+    } else if (errorCallback) {
+      errorCallback(e);
+    }
+  };
+  
   document.head.appendChild(script);
 }
 
@@ -51,50 +89,82 @@ function registerFcoseExtension() {
 
 // 确保先加载必要的依赖
 function loadLayoutLibraries(callback) {
-  if (!window.layoutBase) {
-    loadScript("https://unpkg.com/layout-base/layout-base.js", function() {
-      if (!window.coseBase) {
-        loadScript("https://unpkg.com/cose-base/cose-base.js", function() {
-          if (!window.fcose) {
-            loadScript("https://unpkg.com/cytoscape-fcose/cytoscape-fcose.js", function() {
-              registerFcoseExtension();
-              callback();
-            });
-          } else {
-            registerFcoseExtension();
-            callback();
-          }
-        });
-      } else if (!window.fcose) {
-        loadScript("https://unpkg.com/cytoscape-fcose/cytoscape-fcose.js", function() {
-          registerFcoseExtension();
-          callback();
-        });
-      } else {
-        registerFcoseExtension();
-        callback();
-      }
-    });
-  } else if (!window.coseBase) {
-    loadScript("https://unpkg.com/cose-base/cose-base.js", function() {
-      if (!window.fcose) {
-        loadScript("https://unpkg.com/cytoscape-fcose/cytoscape-fcose.js", function() {
-          registerFcoseExtension();
-          callback();
-        });
-      } else {
-        registerFcoseExtension();
-        callback();
-      }
-    });
-  } else if (!window.fcose) {
-    loadScript("https://unpkg.com/cytoscape-fcose/cytoscape-fcose.js", function() {
-      registerFcoseExtension();
-      callback();
-    });
-  } else {
+  // 跟踪加载状态
+  const loadStatus = {
+    layoutBase: !window.layoutBase,
+    coseBase: !window.coseBase,
+    fcose: !window.fcose
+  };
+  
+  // 最终回调函数
+  const finalCallback = () => {
     registerFcoseExtension();
-    callback();
+    if (callback) callback();
+  };
+  
+  // 错误处理回调
+  const handleError = (libName) => (error) => {
+    console.error(`加载${libName}失败:`, error);
+    loadStatus[libName] = false;
+    
+    // 检查是否所有库都已尝试加载（无论成功或失败）
+    if (!loadStatus.layoutBase && !loadStatus.coseBase && !loadStatus.fcose) {
+      console.warn("一些布局库加载失败，但仍继续初始化");
+      finalCallback();
+    }
+  };
+  
+  // 加载fcose
+  const loadFcose = () => {
+    if (!window.fcose) {
+      loadScript(
+        "https://unpkg.com/cytoscape-fcose/cytoscape-fcose.js", 
+        () => {
+          loadStatus.fcose = false;
+          if (!loadStatus.layoutBase && !loadStatus.coseBase && !loadStatus.fcose) {
+            finalCallback();
+          }
+        },
+        handleError('fcose')
+      );
+    } else {
+      loadStatus.fcose = false;
+      if (!loadStatus.layoutBase && !loadStatus.coseBase && !loadStatus.fcose) {
+        finalCallback();
+      }
+    }
+  };
+  
+  // 加载cose-base
+  const loadCoseBase = () => {
+    if (!window.coseBase) {
+      loadScript(
+        "https://unpkg.com/cose-base/cose-base.js", 
+        () => {
+          loadStatus.coseBase = false;
+          loadFcose();
+        },
+        handleError('coseBase')
+      );
+    } else {
+      loadStatus.coseBase = false;
+      loadFcose();
+    }
+  };
+  
+  // 开始加载链: layoutBase -> coseBase -> fcose
+  if (!window.layoutBase) {
+    loadScript(
+      "https://unpkg.com/layout-base/layout-base.js", 
+      () => {
+        loadStatus.layoutBase = false;
+        loadCoseBase();
+      },
+      handleError('layoutBase')
+    );
+  } else {
+    loadStatus.layoutBase = false;
+    loadCoseBase();
   }
 }
 
@@ -285,7 +355,7 @@ function initGraph(data) {
     {
       selector: "edge",
       style: {
-        width: 2,
+        width: 1,
         "curve-style": "bezier",
         "target-arrow-shape": "triangle",
         "line-color": "#bdc3c7",
@@ -303,14 +373,17 @@ function initGraph(data) {
       style: {
         "line-color": "#6baed6", // 蓝色表示合作关系
         "target-arrow-color": "#6baed6",
-        label: "CO", // 简写为CO
+        label: "", // 简写为CO
+        opacity: 0.5,
       },
     },
     {
       selector: 'edge[label="advisor"]',
       style: {
         "line-color": "#fd8d3c", // 橙色表示导师关系
-        "target-arrow-color": "#fd8d3c",
+        "source-arrow-color": "#fd8d3c",
+        "source-arrow-shape": "triangle",
+        "target-arrow-shape": "none",
         label: "AD", // 简写为AD
       },
     },
@@ -343,7 +416,9 @@ function initGraph(data) {
       selector: 'edge[multiRelation][label="advisor"]',
       style: {
         'line-color': '#fd8d3c',
-        'target-arrow-color': '#fd8d3c',
+        'source-arrow-color': '#fd8d3c',
+        'source-arrow-shape': "triangle",
+        'target-arrow-shape': "none",
         'label': 'AD*', // 添加星号表示含多重关系
         'line-style': 'solid',
         'z-index': 10 // 导师关系显示在最上层
@@ -444,8 +519,8 @@ function initGraph(data) {
         </label>
       </div>
       
-      <button id="graph-view-btn" class="control-btn" title="返回全局视图">
-        <i class="fas fa-globe"></i> 全局视图
+      <button id="graph-view-btn" class="control-btn" title="根据当前筛选设置重新布局">
+        <i class="fas fa-sync-alt"></i> 重新布局
       </button>
     </div>
   `;
@@ -564,8 +639,8 @@ function adjustNodeSizeByConnections() {
         'text-opacity': 0.7,
         'z-index': 1
       });
-    } else if (connections >= 2 && connections < 5) {
-      // 有2-4条边的节点，使用默认尺寸
+    } else if (connections >= 2 && connections <= 3) {
+      // 连接较少的节点
       node.style({
         'width': 25,
         'height': 25,
@@ -573,20 +648,33 @@ function adjustNodeSizeByConnections() {
         'border-color': isPrimary ? '#08519c' : '#6baed6',
         'z-index': 5
       });
-    } else if (connections >= 5) {
-      // 重要节点（连接较多）
+    } else if (connections > 3) {
+      // 连接较多的节点，使用线性映射调整大小
+      // 计算节点大小，最小25，最大45
+      const minConnections = 4;
+      const maxConnections = 20; // 假设最大连接数为20，可以根据实际情况调整
+      const minSize = 25;
+      const maxSize = 45;
+      
+      // 限制连接数在范围内用于计算
+      const cappedConnections = Math.min(Math.max(connections, minConnections), maxConnections);
+      
+      // 计算线性大小 (connections - minConnections) / (maxConnections - minConnections) * (maxSize - minSize) + minSize
+      const size = Math.floor((cappedConnections - minConnections) / (maxConnections - minConnections) * (maxSize - minSize) + minSize);
+      
+      // 设置样式
       node.style({
-        'width': 35,
-        'height': 35,
+        'width': size,
+        'height': size,
         'border-width': 2,
         'background-color': isPrimary ? '#3182bd' : '#9ecae1',
         'border-color': isPrimary ? '#08519c' : '#6baed6',
-        'z-index': 10
+        'z-index': 5 + Math.min(connections, 10) // 连接更多的节点z-index略高，但不超过15
       });
     }
     
     // 确保主要学者节点始终较为突出
-    if (isPrimary && connections < 5) {
+    if (isPrimary && connections <= 3) {
       node.style({
         'width': 30,
         'height': 30,
@@ -677,12 +765,12 @@ function toggleIsolatedNodes(show) {
           // 显著增加节点排斥力来避免重叠
           layoutConfig.nodeRepulsion = 25000; // 增加节点间的排斥力
           // 增加理想边长以增加孤立节点间距
-          layoutConfig.idealEdgeLength = 200; // 增加理想边长度
+          layoutConfig.idealEdgeLength = 250; // 增加理想边长度
           // 调整重力以防止孤立节点飞得太远，但不要过度约束
-          layoutConfig.gravity = 0.15; // 减小重力以允许节点更分散
+          layoutConfig.gravity = 0.1; // 减小重力以允许节点更分散
           // 确保节点不重叠，增加额外的间距
           layoutConfig.avoidOverlap = true;
-          layoutConfig.avoidOverlapPadding = 30; // 增加节点间的间距
+          layoutConfig.avoidOverlapPadding = 50; // 增加节点间的间距
           
           // 使用较大的冷却系数以允许布局更好地展开
           if (layoutName === "fcose") {
@@ -735,7 +823,7 @@ function toggleIsolatedNodes(show) {
                   'control-point-step-size': 180, // 显著增加贝塞尔曲线控制点距离
                   'edge-distances': 'node-position',
                   'control-point-weight': 0.7, // 调整控制点权重以增加曲率
-                  'control-point-distance': 100 // 增加控制点距离
+                  'control-point-distance': 150 // 增加控制点距离
                 });
               }
             });
@@ -812,7 +900,7 @@ function getLayoutConfig(name) {
   const layoutConfig = {
     cose: {
       name: "cose",
-      idealEdgeLength: 120,
+      idealEdgeLength: 300,
       nodeOverlap: 20,
       refresh: 20,
       padding: 80,
@@ -838,7 +926,7 @@ function getLayoutConfig(name) {
       fit: true, // 适应视图
       padding: 80, // 填充
       nodeRepulsion: 12000, // 节点间斥力
-      idealEdgeLength: 100, // 理想边长
+      idealEdgeLength: 300, // 理想边长
       edgeElasticity: 0.45, // 边的弹性
       nestingFactor: 0.1, // 嵌套因子
       gravity: 0.25, // 重力
@@ -854,7 +942,7 @@ function getLayoutConfig(name) {
       samplingType: true, // 采样类型
       sampleSize: 100, // 样本大小
       avoidOverlap: true, // 避免重叠
-      avoidOverlapPadding: 10, // 避免重叠填充
+      avoidOverlapPadding: 30, // 避免重叠填充
       // 质量调整
       qualityFactor: 0.9, // 质量因子
       // 组件处理
@@ -1062,13 +1150,13 @@ function setupEventListeners() {
   // 管理面板相关事件
   setupAdminPanelEvents();
 
-  // 添加新的全局视图按钮事件
+  // 添加新的重新布局按钮事件
   document.body.addEventListener("click", function (event) {
     if (
       event.target.id === "graph-view-btn" ||
       event.target.closest("#graph-view-btn")
     ) {
-      resetToGlobalView();
+      applyCurrentLayout();
     }
   });
 
@@ -1457,28 +1545,86 @@ function changeLayout(name) {
   }
   
   // 应用新布局并设置动画完成后的回调
-  const layout = cy.layout(layoutConfig);
+  let layout;
   
-  // 在布局完成后调整节点大小和恢复选择
-  layout.one("layoutstop", function() {
-    adjustNodeSizeByConnections();
-    
-    // 如果之前有选中的节点，保持选中状态并聚焦
-    if (selectedNode) {
-      // 暂时禁用自动焦点模式
-      const wasAutoFocusEnabled = isAutoFocusEnabled;
-      isAutoFocusEnabled = false;
-      
-      // 重新选中节点
-      setTimeout(() => {
-        selectNode(selectedNode);
-        // 恢复焦点模式设置
-        isAutoFocusEnabled = wasAutoFocusEnabled;
-      }, 50);
+  try {
+    // 检查布局是否存在
+    if (name === 'fcose' && !cy.layout({name: 'fcose'}).valid) {
+      console.warn("fcose布局未正确加载，尝试重新注册...");
+      // 尝试重新注册fcose
+      if (window.fcose && window.cytoscape) {
+        try {
+          window.cytoscape.use(window.fcose);
+          console.log("fcose布局重新注册成功");
+        } catch (e) {
+          console.error("重新注册fcose扩展失败:", e);
+          // 回退到cose布局
+          console.log("回退到cose布局");
+          layoutConfig.name = 'cose';
+        }
+      } else {
+        // 动态加载布局库并回退到cose
+        console.log("fcose依赖不存在，回退到cose布局");
+        layoutConfig.name = 'cose';
+        
+        // 异步加载布局库以备后用
+        loadLayoutLibraries(() => console.log("布局库加载完成"));
+      }
     }
-  });
-  
-  layout.run();
+    
+    layout = cy.layout(layoutConfig);
+    
+    // 在布局完成后调整节点大小和恢复选择
+    layout.one("layoutstop", function() {
+      adjustNodeSizeByConnections();
+      
+      // 如果之前有选中的节点，保持选中状态并聚焦
+      if (selectedNode) {
+        // 暂时禁用自动焦点模式
+        const wasAutoFocusEnabled = isAutoFocusEnabled;
+        isAutoFocusEnabled = false;
+        
+        // 重新选中节点
+        setTimeout(() => {
+          selectNode(selectedNode);
+          // 恢复焦点模式设置
+          isAutoFocusEnabled = wasAutoFocusEnabled;
+        }, 50);
+      }
+    });
+    
+    // 捕获布局错误
+    layout.one("layoutfailed", function(e) {
+      console.error("布局运行失败:", e);
+      
+      // 如果是fcose布局失败，尝试回退到cose布局
+      if (name === 'fcose') {
+        console.log("尝试回退到cose布局");
+        return changeLayout('cose');
+      }
+      
+      return null;
+    });
+    
+    layout.run();
+    
+    // 返回布局对象，以便调用者可以添加额外的事件处理
+    return layout;
+  } catch (error) {
+    console.error("应用布局过程中出错:", error);
+    
+    // 尝试使用更安全的布局作为回退
+    if (name !== 'grid') {
+      console.log("尝试回退到网格布局");
+      try {
+        return cy.layout({ name: 'grid' }).run();
+      } catch (e) {
+        console.error("回退布局也失败:", e);
+      }
+    }
+    
+    return null;
+  }
 }
 
 // 过滤关系
@@ -1646,7 +1792,7 @@ function selectNode(node) {
   // 更新详情面板
   updateDetailPanel(node.data());
 
-  // 显示返回全局视图按钮 (现在由控制面板中的按钮替代)
+  // 显示重新布局按钮
   const viewBtn = document.getElementById("graph-view-btn");
   if (viewBtn) {
     viewBtn.classList.remove("hidden");
@@ -1704,32 +1850,10 @@ function enableFocusMode(centerNode) {
     adjustNodeSizeByConnections();
 }
 
-// 重置到全局视图
+// 重置到全局视图（保留兼容性）
 function resetToGlobalView() {
-  // 如果不在焦点模式，只需要清除选择
-  if (!isFocusedMode) {
-    clearNodeSelection();
-    return;
-  }
-
-  // 重置焦点模式
-  isFocusedMode = false;
-
-  // 恢复所有节点的显示状态
-  cy.elements().removeClass("hidden highlighted related faded").style('opacity', 1);
-
-  // 平滑过渡到适合所有节点的视图
-  cy.animate({
-    fit: {
-      padding: 50
-    },
-    duration: 500,
-    easing: 'ease-in-out-cubic',
-    complete: function() {
-      // 调整节点大小
-      adjustNodeSizeByConnections();
-    }
-  });
+  // 直接调用新的applyCurrentLayout函数
+  applyCurrentLayout();
 }
 
 // 清除节点选择
@@ -2073,16 +2197,57 @@ function updateRelatedScholars(scholarId) {
 
 // 清除详情面板
 function clearDetailPanel() {
-  document.getElementById("scholar-name").textContent = "选择学者查看详情";
-  document.querySelector("#scholar-affiliation .value").textContent = "-";
-  document.querySelector("#scholar-interests .value").textContent = "-";
-  document.querySelector("#scholar-citations .value").textContent = "-";
-  document.querySelector(".custom-fields").innerHTML = "-";
-  document.getElementById("publication-list").innerHTML =
-    "<li>选择学者查看论文</li>";
-  document.getElementById("related-scholars").innerHTML =
-    "<li>选择学者查看关系</li>";
-  document.getElementById("scholar-avatar").src = "./img/default-avatar.png";
+  try {
+    // 设置学者名称
+    const scholarNameEl = document.getElementById("scholar-name");
+    if (scholarNameEl) {
+      scholarNameEl.textContent = "选择学者查看详情";
+    }
+    
+    // 设置所属机构
+    const affiliationEl = document.querySelector("#scholar-affiliation .value");
+    if (affiliationEl) {
+      affiliationEl.textContent = "-";
+    }
+    
+    // 设置研究方向
+    const interestsEl = document.querySelector("#scholar-interests .value");
+    if (interestsEl) {
+      interestsEl.textContent = "-";
+    }
+    
+    // 设置引用次数
+    const citationsEl = document.querySelector("#scholar-citations .value");
+    if (citationsEl) {
+      citationsEl.textContent = "-";
+    }
+    
+    // 设置自定义字段
+    const customFieldsEl = document.querySelector(".custom-fields-content");
+    if (customFieldsEl) {
+      customFieldsEl.innerHTML = "<p>选择学者查看详情</p>";
+    }
+    
+    // 设置论文列表
+    const publicationListEl = document.getElementById("publication-list");
+    if (publicationListEl) {
+      publicationListEl.innerHTML = "<li>选择学者查看论文</li>";
+    }
+    
+    // 设置相关学者列表
+    const relatedScholarsEl = document.getElementById("related-scholars");
+    if (relatedScholarsEl) {
+      relatedScholarsEl.innerHTML = "<li>选择学者查看关系</li>";
+    }
+    
+    // 设置头像
+    const avatarImg = document.getElementById("scholar-avatar");
+    if (avatarImg) {
+      avatarImg.src = "https://placehold.co/300x300?text=U";
+    }
+  } catch (error) {
+    console.error("清除详情面板时出错:", error);
+  }
 }
 
 // 添加新学者
@@ -2653,15 +2818,96 @@ async function reloadData() {
     // 更新管理面板数据
     loadAdminPanelData();
 
-    // 重建图谱
+    // 检查孤立节点开关状态
+    const isolatedToggle = document.getElementById("toggle-isolated");
+    const shouldShowIsolatedNodes = isolatedToggle ? isolatedToggle.checked : false;
+    
+    // 重建图谱，根据孤立节点开关状态决定是否预筛选孤立节点
     cy.elements().remove();
-    cy.add(getGraphElements(graphData));
+    if (!shouldShowIsolatedNodes) {
+      // 如果不显示孤立节点，使用预过滤的元素
+      const filteredElements = filterIsolatedNodes(getGraphElements(graphData));
+      cy.add(filteredElements);
+    } else {
+      // 显示所有节点
+      cy.add(getGraphElements(graphData));
+    }
 
-    // 应用当前布局
+    // 获取当前布局类型
     const layoutName = document.getElementById("layout-select").value;
-    changeLayout(layoutName);
-
-    return true;
+    
+    // 确保布局库已正确加载，特别是当使用fcose布局时
+    if (layoutName === 'fcose') {
+      return new Promise((resolve) => {
+        // 检查fcose布局插件是否已正确注册
+        if (window.fcose && window.cytoscape && typeof cy.layout({name: 'fcose'}).valid !== 'undefined') {
+          console.log("fcose布局已正确注册，直接应用布局");
+          const layoutResult = changeLayout(layoutName);
+          
+          // 布局完成后确保孤立节点状态一致
+          if (layoutResult && layoutResult.one) {
+            layoutResult.one('layoutstop', function() {
+              // 再次检查孤立节点状态，确保与开关一致
+              const currentToggleState = isolatedToggle ? isolatedToggle.checked : false;
+              if (currentToggleState !== shouldShowIsolatedNodes) {
+                // 如果状态不一致，应用正确的状态
+                toggleIsolatedNodes(currentToggleState);
+              }
+            });
+          }
+          
+          resolve(true);
+        } else {
+          console.log("需要加载fcose布局库，延迟应用布局");
+          // 加载布局库后再应用布局
+          loadLayoutLibraries(() => {
+            try {
+              const layoutResult = changeLayout(layoutName);
+              
+              // 布局完成后确保孤立节点状态一致
+              if (layoutResult && layoutResult.one) {
+                layoutResult.one('layoutstop', function() {
+                  // 再次检查孤立节点状态，确保与开关一致
+                  const currentToggleState = isolatedToggle ? isolatedToggle.checked : false;
+                  if (currentToggleState !== shouldShowIsolatedNodes) {
+                    // 如果状态不一致，应用正确的状态
+                    toggleIsolatedNodes(currentToggleState);
+                  }
+                });
+              }
+              
+              resolve(true);
+            } catch (error) {
+              console.error("加载布局库后应用布局失败:", error);
+              // 尝试使用更安全的备选布局
+              try {
+                changeLayout('grid');
+              } catch (e) {
+                console.error("备选布局也失败:", e);
+              }
+              resolve(false);
+            }
+          });
+        }
+      });
+    } else {
+      // 对于其他布局，直接应用
+      const layoutResult = changeLayout(layoutName);
+      
+      // 布局完成后确保孤立节点状态一致
+      if (layoutResult && layoutResult.one) {
+        layoutResult.one('layoutstop', function() {
+          // 再次检查孤立节点状态，确保与开关一致
+          const currentToggleState = isolatedToggle ? isolatedToggle.checked : false;
+          if (currentToggleState !== shouldShowIsolatedNodes) {
+            // 如果状态不一致，应用正确的状态
+            toggleIsolatedNodes(currentToggleState);
+          }
+        });
+      }
+      
+      return true;
+    }
   } catch (error) {
     console.error("重新加载数据失败:", error);
     showAdminStatus("重新加载数据失败", "error");
@@ -2725,6 +2971,10 @@ async function fetchSecondaryScholarData(scholarId, scholarName) {
         '<i class="fas fa-spinner fa-spin"></i> 正在爬取数据...';
     }
 
+    // 保存当前孤立节点开关状态，确保重新加载后保持一致
+    const isolatedToggle = document.getElementById("toggle-isolated");
+    const wasIsolatedNodesShown = isolatedToggle ? isolatedToggle.checked : false;
+
     // 准备请求数据
     let requestData;
     if (hasScholarId) {
@@ -2753,25 +3003,46 @@ async function fetchSecondaryScholarData(scholarId, scholarName) {
     if (result.success) {
       alert(`成功爬取学者 "${scholarName}" 的详细数据`);
 
-      // 重新加载数据
-      await reloadData();
+      // 记住要选择的学者ID
+      const targetScholarId = result.scholar_id || scholarId;
+      
+      // 设置延迟以确保布局完成后再选择节点
+      let layoutReady = false;
+      const checkLayoutReady = setInterval(() => {
+        if (layoutReady) {
+          clearInterval(checkLayoutReady);
+          
+          // 如果在焦点模式，重置到全局视图
+          if (isFocusedMode) {
+            applyCurrentLayout();
+          }
+          
+          // 确保孤立节点的显示状态与之前一致
+          if (isolatedToggle) {
+            // 注意：这里只在UI上设置，不触发筛选，因为reloadData已经处理了筛选
+            isolatedToggle.checked = wasIsolatedNodesShown;
+          }
+          
+          // 尝试重新选择该学者
+          setTimeout(() => {
+            const newNode = cy.getElementById(targetScholarId);
+            if (newNode.length > 0) {
+              selectNode(newNode);
+            }
+          }, 500);
+        }
+      }, 100);
 
-      // 如果在焦点模式，重置到全局视图
-      if (isFocusedMode) {
-        resetToGlobalView();
-      }
-
-      // 尝试重新选择该学者
-      const newNode = cy.getElementById(result.scholar_id || scholarId);
-      if (newNode.length > 0) {
-        selectNode(newNode);
-      }
+      // 重新加载数据，并在完成后标记布局已准备好
+      await reloadData().then(() => {
+        layoutReady = true;
+      });
     } else {
       alert(`爬取详细数据失败: ${result.error || "未知错误"}`);
     }
   } catch (error) {
-    console.error("爬取学者数据出错:", error);
-    alert(`爬取数据时发生错误: ${error.message}`);
+    console.error("爬取学者数据时出错:", error);
+    alert(`爬取学者数据时出错: ${error.message || "未知错误"}`);
   } finally {
     // 恢复按钮状态
     const fetchBtn = document.getElementById("fetch-scholar-btn");
@@ -3068,7 +3339,7 @@ function highlightNodesByTag(tag) {
   // 更新视图居中显示匹配节点
   cy.fit(matchedNodes, 50);
 
-  // 显示"返回全局视图"按钮
+  // 显示"重新布局"按钮
   document.getElementById("graph-view-btn").classList.remove("hidden");
 }
 
@@ -3124,22 +3395,45 @@ async function initializeDatabase() {
 
 // 页面加载完成后初始化
 document.addEventListener("DOMContentLoaded", function() {
-  // 先注册fcose布局插件
-  if (window.cytoscape && window.fcose) {
+  // 检查是否需要加载布局库
+  const needsLayoutLibraries = !window.layoutBase || !window.coseBase || !window.fcose || 
+                              !window.cytoscape || !window.cytoscape.use;
+  
+  if (needsLayoutLibraries) {
+    console.log("需要加载布局库和依赖...");
+    // 使用我们的加载器按顺序加载所有必要的库
+    loadLayoutLibraries(() => {
+      // 注册布局后初始化
+      if (window.cytoscape && window.fcose) {
+        try {
+          window.cytoscape.use(window.fcose);
+          console.log("fcose布局注册成功");
+          // 初始化主应用
+          init();
+        } catch (e) {
+          console.error("fcose布局注册失败，但仍继续初始化:", e);
+          // 即使注册失败也初始化应用
+          init();
+        }
+      } else {
+        console.warn("fcose布局或cytoscape未加载，但仍继续初始化");
+        init();
+      }
+    });
+  } else {
+    // 所有库都已加载，直接注册并初始化
     try {
-      window.cytoscape.use(window.fcose);
-      console.log("fcose布局注册成功");
+      if (window.cytoscape && window.fcose && !window.cytoscape.extensions?.fcose) {
+        window.cytoscape.use(window.fcose);
+        console.log("fcose布局注册成功");
+      }
       // 初始化主应用
       init();
     } catch (error) {
-      console.error("注册fcose布局失败:", error);
-      // 尝试使用我们的加载器
-      loadLayoutLibraries(() => init());
+      console.error("注册fcose布局失败，但仍继续初始化:", error);
+      // 尝试初始化应用
+      init();
     }
-  } else {
-    console.warn("fcose布局未加载，尝试动态加载...");
-    // 使用我们的加载器
-    loadLayoutLibraries(() => init());
   }
 });
 
@@ -3180,4 +3474,56 @@ function updatePublications(scholarData) {
   // 对所有论文标题和venue应用无省略样式
   setNoEllipsis(".publication-title");
   setNoEllipsis(".publication-venue");
+}
+
+// 根据当前筛选设置重新应用布局
+function applyCurrentLayout() {
+  try {
+    // 获取当前布局类型
+    const layoutSelect = document.getElementById("layout-select");
+    const layoutName = layoutSelect ? layoutSelect.value : "fcose";
+    
+    // 如果在焦点模式，先退出焦点模式
+    if (isFocusedMode) {
+      // 重置焦点模式
+      isFocusedMode = false;
+      
+      // 清除高亮和透明效果，但保持隐藏的节点状态
+      cy.elements().removeClass("highlighted related faded").removeStyle('opacity');
+    }
+    
+    // 清除节点选择状态，但保持当前筛选设置
+    if (activeNodeId) {
+      activeNodeId = null;
+    }
+    
+    // 获取布局配置
+    const layoutConfig = getLayoutConfig(layoutName);
+    
+    // 平滑过渡设置
+    layoutConfig.animate = true;
+    layoutConfig.animationDuration = 800;
+    layoutConfig.animationEasing = 'ease-in-out-cubic';
+    
+    // 应用布局到可见元素
+    const visibleElements = cy.elements().not('.hidden');
+    const layout = visibleElements.layout(layoutConfig);
+    
+    // 运行布局并设置回调
+    layout.run();
+    
+    // 在布局完成后调整节点大小
+    layout.one("layoutstop", function() {
+      adjustNodeSizeByConnections();
+    });
+    
+    // 清除详情面板
+    try {
+      clearDetailPanel();
+    } catch (e) {
+      console.warn("清除详情面板时出错:", e);
+    }
+  } catch (error) {
+    console.error("重新应用布局时出错:", error);
+  }
 }

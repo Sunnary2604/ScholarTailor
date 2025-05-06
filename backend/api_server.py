@@ -442,7 +442,7 @@ def update_scholar_tags():
         
         if target_file:
             try:
-                # 读取文件
+            # 读取文件
                 with open(target_file, 'r', encoding='utf-8') as f:
                     scholar_data = json.load(f)
                 
@@ -458,7 +458,7 @@ def update_scholar_tags():
                 with open(target_file, 'w', encoding='utf-8') as f:
                     json.dump(scholar_data, f, ensure_ascii=False, indent=2)
                 
-                # 仅调用一次数据重生成
+                    # 仅调用一次数据重生成
                 regenerate_data()
                 
                 return jsonify({

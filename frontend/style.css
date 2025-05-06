@@ -813,7 +813,7 @@ footer {
 
 .scholar-list, .relationship-list {
     max-height: 300px;
-    overflow-y: auto;
+    overflow-y: scroll !important;
     border: 1px solid #ddd;
     border-radius: var(--border-radius-sm);
     background-color: white;
@@ -1369,7 +1369,7 @@ footer {
     border-color: #c0392b;
 }
 
-/* 返回全局视图的按钮 */
+/* 重新布局按钮 */
 .global-view-btn {
     display: flex;
     align-items: center;

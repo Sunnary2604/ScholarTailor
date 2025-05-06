@@ -203,6 +203,10 @@ class ScholarDataProcessor:
                 missing.append(f"目标学者ID '{target_id}'")
             
             print(f"警告: 添加关系失败，{' 和 '.join(missing)}不存在")
+            
+            # 添加一些调试信息
+            print(f"当前已加载的主要学者ID: {list(self.scholars.keys())[:5]}...")
+            print(f"当前已加载的关联学者ID: {list(self.secondary_scholars.keys())[:5]}...")
             return False
         
         relationship = {
@@ -228,6 +232,7 @@ class ScholarDataProcessor:
         else:
             # 添加新关系
             self.relationships.append(relationship)
+            print(f"已添加新关系: {source_id} -- {relation_type} --> {target_id}")
             
         return True
     
@@ -304,21 +309,24 @@ class ScholarDataProcessor:
         # 添加关联学者节点（仅添加不在主要学者中的）
         for scholar_id, scholar in self.secondary_scholars.items():
             if scholar_id not in uniqueScholars:
-                # 检查该关联学者是否与任何主要学者有关系
+            # 检查该关联学者是否与任何主要学者有关系
                 has_relation = any(
                     (r['source'] == scholar_id and r['target'] in self.scholars) or
                     (r['target'] == scholar_id and r['source'] in self.scholars)
                     for r in self.relationships
                 )
-                
-                # 只添加有关系的关联学者
-                if has_relation:
-                    node = self.create_scholar_node(scholar_id, scholar, is_secondary=True)
-                    nodes.append(node)
-                    uniqueScholars.add(scholar_id)
+            
+            # 只添加有关系的关联学者
+            if has_relation:
+                node = self.create_scholar_node(scholar_id, scholar, is_secondary=True)
+                nodes.append(node)
+                uniqueScholars.add(scholar_id)
         
         edges = []
+        print(f"处理关系总数: {len(self.relationships)}")
+        
         # 只添加至少一端连接到主要学者的边
+        edge_count = 0
         for rel in self.relationships:
             source_is_primary = rel['source'] in self.scholars
             target_is_primary = rel['target'] in self.scholars
@@ -328,14 +336,22 @@ class ScholarDataProcessor:
                 edge = {
                     'source': rel['source'],
                     'target': rel['target'],
-                    'label': rel['type'],
-                    'weight': rel['weight']
+                    'label': rel['type'],  # 确保使用'type'作为'label'
+                    'weight': rel.get('weight', 1)
                 }
                 
+                # 处理元数据
                 if 'metadata' in rel:
                     edge['data'] = rel['metadata']
                     
+                # 添加调试输出
+                if edge_count < 5 or rel['type'] != 'coauthor':
+                    print(f"添加边: {rel['source']} --[{rel['type']}]--> {rel['target']}")
+                
                 edges.append(edge)
+                edge_count += 1
+        
+        print(f"生成的边总数: {len(edges)}")
         
         return {
             'nodes': nodes,
@@ -389,7 +405,16 @@ class ScholarDataProcessor:
             with open(relationships_file, 'r', encoding='utf-8') as f:
                 relationships = json.load(f)
             
+            print(f"读取到 {len(relationships)} 个自定义关系")
+            
+            # 调试: 打印前几个关系
+            if relationships:
+                print("前3个关系示例:")
+                for i, rel in enumerate(relationships[:3]):
+                    print(f"  {i+1}. {rel.get('source', '?')} -- {rel.get('type', '?')} --> {rel.get('target', '?')}")
+            
             count = 0
+            failed_count = 0
             for rel in relationships:
                 if 'source' in rel and 'target' in rel and 'type' in rel:
                     metadata = rel.get('metadata', None)
@@ -402,8 +427,22 @@ class ScholarDataProcessor:
                     
                     if success:
                         count += 1
+                    else:
+                        failed_count += 1
             
-            print(f"成功加载 {count} 个自定义关系")
+            print(f"成功加载 {count} 个自定义关系, 失败 {failed_count} 个")
+            
+            # 打印当前所有关系类型统计
+            relation_types = {}
+            for r in self.relationships:
+                rel_type = r.get('type', '未知')
+                if rel_type in relation_types:
+                    relation_types[rel_type] += 1
+                else:
+                    relation_types[rel_type] = 1
+            
+            print(f"当前关系类型统计: {relation_types}")
+            
             return True
         except Exception as e:
             print(f"加载关系文件时出错: {str(e)}")
