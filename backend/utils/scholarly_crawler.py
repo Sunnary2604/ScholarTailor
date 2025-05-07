@@ -14,7 +14,7 @@ from scholarly import scholarly, ProxyGenerator
 
 
 class ScholarCrawler:
-    def __init__(self, use_proxy=False, data_dir='../data/scholars'):
+    def __init__(self, use_proxy=False, data_dir=None):
         """
         初始化爬虫，可选是否使用代理
         
@@ -23,7 +23,13 @@ class ScholarCrawler:
             data_dir (str): 存储学者数据的目录
         """
         self.use_proxy = use_proxy
-        self.data_dir = data_dir
+        
+        # 如果未指定数据目录，使用默认路径
+        if not data_dir:
+            base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+            self.data_dir = os.path.join(base_dir, 'data', 'scholars')
+        else:
+            self.data_dir = data_dir
 
         # 确保数据目录存在
         os.makedirs(self.data_dir, exist_ok=True)

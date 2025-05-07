@@ -1,3 +1,4 @@
 /data
 data.json
-/backend/__pycache__
+*.pyc
+*.DS_Store

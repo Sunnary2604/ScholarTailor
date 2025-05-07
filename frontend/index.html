@@ -27,6 +27,9 @@
             <input type="text" id="search-input" placeholder="搜索学者..." />
             <button id="search-btn">搜索</button>
           </div>
+          <button id="filter-btn" class="nav-btn" title="筛选设置">
+            <i class="fas fa-filter"></i>
+          </button>
           <button id="admin-btn" class="admin-btn" title="管理面板">
             <i class="fas fa-cog"></i>
           </button>
@@ -34,79 +37,86 @@
       </header>
 
       <main>
-        <div class="graph-container">
-          <!-- 图谱展示区，新的控制面板将通过JS动态添加 -->
-          <div id="cy"></div>
-        </div>
+        <div class="main-container">
+          <div class="graph-container">
+            <!-- 图谱展示区，新的控制面板将通过JS动态添加 -->
+            <div id="cy"></div>
+            <!-- 添加右上角控制按钮 -->
+            <div class="graph-controls">
+              <div id="data-status" class="status-indicator">正在加载数据...</div>
+              <button id="reset-view-btn" title="重置视图"><i class="fas fa-expand-arrows-alt"></i> 重置视图</button>
+              <button id="reload-data-btn" title="刷新数据"><i class="fas fa-sync-alt"></i> 刷新数据</button>
+              <button id="reset-layout-btn" title="重新应用布局"><i class="fas fa-sync-alt"></i> 重新布局</button>
+            </div>
+          </div>
 
-        <div class="detail-panel">
-          <!-- 学者详情面板 -->
-
-
-          <div class="panel-content">
-            <div class="basic-info">
-              <div class="scholar-header">
-                <div class="scholar-avatar-container">
-                  <img id="scholar-avatar" src="" alt="学者头像" onerror="this.src='https://placehold.co/300x300?text=U'; this.onerror=null;">
+          <div class="detail-panel">
+            <!-- 学者详情面板 -->
+            <div class="panel-content">
+              <div class="basic-info">
+                <div class="scholar-header">
+                  <div class="scholar-avatar-container">
+                    <img id="scholar-avatar" src="" alt="学者头像" onerror="this.src='https://placehold.co/300x300?text=U'; this.onerror=null;">
+                  </div>
+                  <h2 id="scholar-name">选择学者查看详情</h2>
                 </div>
-                <h2 id="scholar-name">选择学者查看详情</h2>
-              </div>
-              
-              <div id="scholar-affiliation" class="info-item">
-                <span class="label">所属机构:</span>
-                <span class="value">-</span>
-              </div>
-              <div id="scholar-citations" class="info-item">
-                <span class="label">引用次数:</span>
-                <span class="value">-</span>
-              </div>
-              <div id="scholar-interests" class="info-item">
-                <span class="label">研究方向:</span>
-                <span class="value">-</span>
-              </div>
-              <div id="scholar-homepage" class="info-item">
-                <span class="label">个人网页:</span>
-                <span class="value">-</span>
-              </div>
-              <div id="scholar-tags" class="info-item">
-                <span class="label">
-                  标签:
-                  <button class="tag-add-btn" id="tag-add-btn" title="添加标签">
-                    <i class="fas fa-plus"></i>
-                  </button>
-                </span>
-                <div class="value scholar-tags">-</div>
-              </div>
-              <div id="scholar-custom" class="info-item">
-                <span class="label">额外信息:</span>
-                <div class="value custom-fields-container">
-                  <div class="scholar-buttons">
-                    <button id="fetch-scholar-btn" class="scholar-button">
-                      <i class="fas fa-download"></i> 爬取详细数据
+                
+                <div id="scholar-affiliation" class="info-item">
+                  <span class="label">所属机构:</span>
+                  <span class="value">-</span>
+                </div>
+                <div id="scholar-citations" class="info-item">
+                  <span class="label">引用次数:</span>
+                  <span class="value">-</span>
+                </div>
+                <div id="scholar-interests" class="info-item">
+                  <span class="label">研究方向:</span>
+                  <span class="value">-</span>
+                </div>
+                <div id="scholar-homepage" class="info-item">
+                  <span class="label">个人网页:</span>
+                  <span class="value">-</span>
+                </div>
+                <div id="scholar-tags" class="info-item">
+                  <span class="label">
+                    标签:
+                    <button class="tag-add-btn" id="tag-add-btn" title="添加标签">
+                      <i class="fas fa-plus"></i>
                     </button>
-                    <a href="#" id="scholar-gs-link" class="scholar-button">
-                      <i class="fas fa-graduation-cap"></i> Google Scholar
-                    </a>
-                  </div>
-                  <div class="custom-fields-content">
-                    <p>这是关联学者，仅作为合作者出现。可以爬取更多详细数据。</p>
+                  </span>
+                  <div class="value scholar-tags">-</div>
+                </div>
+                <div id="scholar-custom" class="info-item">
+                  <span class="label">额外信息:</span>
+                  <div class="value custom-fields-container">
+                    <div class="scholar-buttons">
+                      <button id="fetch-scholar-btn" class="scholar-button">
+                        <i class="fas fa-download"></i> 爬取详细数据
+                      </button>
+                      <a href="#" id="scholar-gs-link" class="scholar-button">
+                        <i class="fas fa-graduation-cap"></i> Google Scholar
+                      </a>
+                    </div>
+                    <div class="custom-fields-content">
+                      <p>这是关联学者，仅作为合作者出现。可以爬取更多详细数据。</p>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
 
-            <div class="publications">
-              <h3>代表性论文</h3>
-              <ul id="publication-list">
-                <li>选择学者查看论文</li>
-              </ul>
-            </div>
+              <div class="publications">
+                <h3>代表性论文</h3>
+                <ul id="publication-list">
+                  <li>选择学者查看论文</li>
+                </ul>
+              </div>
 
-            <div class="relationships">
-              <h3>相关学者</h3>
-              <ul id="related-scholars">
-                <li>选择学者查看关系</li>
-              </ul>
+              <div class="relationships">
+                <h3>相关学者</h3>
+                <ul id="related-scholars">
+                  <li>选择学者查看关系</li>
+                </ul>
+              </div>
             </div>
           </div>
         </div>
@@ -115,6 +125,54 @@
       <footer>
         <p>ScholarTailor - 学者关系可视化系统 | 基于 Cytoscape.js & Scholarly</p>
       </footer>
+    </div>
+
+    <!-- 添加筛选面板 -->
+    <div id="filter-panel" class="filter-panel">
+      <div class="panel-header">
+        <h3>筛选设置</h3>
+        <span id="close-filter-panel" class="close-panel">&times;</span>
+      </div>
+      <div class="panel-content">
+        <div class="filter-section">
+          <h4>连接数筛选</h4>
+          <div class="filter-item">
+            <label>最小连接数:</label>
+            <div class="slider-container">
+              <input type="range" id="min-connections" min="1" max="10" value="2" class="slider">
+              <span id="min-connections-value">2</span>
+            </div>
+          </div>
+        </div>
+        <div class="filter-section">
+          <h4>节点类型筛选</h4>
+          <div class="filter-item">
+            <input type="checkbox" id="show-primary" checked>
+            <label for="show-primary">显示主要学者</label>
+          </div>
+          <div class="filter-item">
+            <input type="checkbox" id="show-secondary" checked>
+            <label for="show-secondary">显示关联学者</label>
+          </div>
+        </div>
+        <div class="filter-section">
+          <h4>关系类型筛选</h4>
+          <div class="filter-item">
+            <input type="checkbox" id="show-coauthor" checked>
+            <label for="show-coauthor">显示合作者关系</label>
+          </div>
+          <div class="filter-item">
+            <input type="checkbox" id="show-advisor" checked>
+            <label for="show-advisor">显示导师关系</label>
+          </div>
+          <div class="filter-item">
+            <input type="checkbox" id="show-colleague" checked>
+            <label for="show-colleague">显示同事关系</label>
+          </div>
+        </div>
+        <button id="apply-filters-btn" class="btn btn-primary">应用筛选</button>
+        <button id="reset-filters-btn" class="btn">重置</button>
+      </div>
     </div>
 
     <!-- 标签管理对话框 -->
@@ -284,7 +342,17 @@
       </div>
     </div>
 
-    <!-- 引入应用脚本 -->
-    <script src="app.js"></script>
+    <!-- 引入JavaScript模块 -->
+    <script type="module">
+      import { init } from './js/core.js';
+      
+      // 等待DOM加载完成后初始化
+      document.addEventListener('DOMContentLoaded', () => {
+        init().catch(error => {
+          console.error('初始化失败:', error);
+          alert('系统初始化失败，请刷新页面重试。');
+        });
+      });
+    </script>
   </body>
 </html>
