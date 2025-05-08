@@ -43,7 +43,9 @@ CREATE TABLE IF NOT EXISTS institutions (
     name TEXT NOT NULL,
     type TEXT,
     url TEXT,
-    lab TEXT
+    lab TEXT,
+    country TEXT,
+    region TEXT
 );
 
 -- 实体表

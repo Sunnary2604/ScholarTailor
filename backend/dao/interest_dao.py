@@ -221,4 +221,26 @@ class InterestDao:
             
         except Exception as e:
             self.logger.error(f"删除兴趣标签时出错: {str(e)}")
+            return False
+    
+    def delete_entity_interests(self, entity_id):
+        """删除实体的所有兴趣标签
+        
+        Args:
+            entity_id: 实体ID
+            
+        Returns:
+            bool: 是否成功删除
+        """
+        try:
+            query = """
+            DELETE FROM interests 
+            WHERE entity_id = ?
+            """
+            
+            self.db_manager.execute(query, (entity_id,))
+            return True
+            
+        except Exception as e:
+            self.logger.error(f"删除实体的所有兴趣标签时出错: {str(e)}")
             return False 

@@ -30,6 +30,9 @@
           <button id="filter-btn" class="nav-btn" title="筛选设置">
             <i class="fas fa-filter"></i>
           </button>
+          <button id="add-scholar-panel-btn" class="nav-btn" title="添加学者">
+            <i class="fas fa-plus"></i>
+          </button>
           <button id="admin-btn" class="admin-btn" title="管理面板">
             <i class="fas fa-cog"></i>
           </button>
@@ -43,10 +46,18 @@
             <div id="cy"></div>
             <!-- 添加右上角控制按钮 -->
             <div class="graph-controls">
-              <div id="data-status" class="status-indicator">正在加载数据...</div>
-              <button id="reset-view-btn" title="重置视图"><i class="fas fa-expand-arrows-alt"></i> 重置视图</button>
-              <button id="reload-data-btn" title="刷新数据"><i class="fas fa-sync-alt"></i> 刷新数据</button>
-              <button id="reset-layout-btn" title="重新应用布局"><i class="fas fa-sync-alt"></i> 重新布局</button>
+              <div id="data-status" class="status-indicator">
+                正在加载数据...
+              </div>
+              <button id="reset-view-btn" title="重置视图">
+                <i class="fas fa-expand-arrows-alt"></i> 重置视图
+              </button>
+              <button id="reload-data-btn" title="刷新数据">
+                <i class="fas fa-sync-alt"></i> 刷新数据
+              </button>
+              <button id="reset-layout-btn" title="重新应用布局">
+                <i class="fas fa-sync-alt"></i> 重新布局
+              </button>
             </div>
           </div>
 
@@ -56,11 +67,16 @@
               <div class="basic-info">
                 <div class="scholar-header">
                   <div class="scholar-avatar-container">
-                    <img id="scholar-avatar" src="" alt="学者头像" onerror="this.src='https://placehold.co/300x300?text=U'; this.onerror=null;">
+                    <img
+                      id="scholar-avatar"
+                      src=""
+                      alt="学者头像"
+                      onerror="this.src='https://placehold.co/300x300?text=U'; this.onerror=null;"
+                    />
                   </div>
                   <h2 id="scholar-name">选择学者查看详情</h2>
                 </div>
-                
+
                 <div id="scholar-affiliation" class="info-item">
                   <span class="label">所属机构:</span>
                   <span class="value">-</span>
@@ -80,7 +96,11 @@
                 <div id="scholar-tags" class="info-item">
                   <span class="label">
                     标签:
-                    <button class="tag-add-btn" id="tag-add-btn" title="添加标签">
+                    <button
+                      class="tag-add-btn"
+                      id="tag-add-btn"
+                      title="添加标签"
+                    >
                       <i class="fas fa-plus"></i>
                     </button>
                   </span>
@@ -98,7 +118,9 @@
                       </a>
                     </div>
                     <div class="custom-fields-content">
-                      <p>这是关联学者，仅作为合作者出现。可以爬取更多详细数据。</p>
+                      <p>
+                        这是关联学者，仅作为合作者出现。可以爬取更多详细数据。
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -123,55 +145,100 @@
       </main>
 
       <footer>
-        <p>ScholarTailor - 学者关系可视化系统 | 基于 Cytoscape.js & Scholarly</p>
+        <p>
+          ScholarTailor - 学者关系可视化系统 | 基于 Cytoscape.js & Scholarly
+        </p>
       </footer>
     </div>
 
+    <!-- 添加筛选面板遮罩层 -->
+    <div id="filter-overlay" class="filter-overlay"></div>
+
     <!-- 添加筛选面板 -->
     <div id="filter-panel" class="filter-panel">
-      <div class="panel-header">
-        <h3>筛选设置</h3>
-        <span id="close-filter-panel" class="close-panel">&times;</span>
+      <div class="modal-header">
+        <h2>高级筛选</h2>
+        <span id="close-filter-panel" class="close-modal">&times;</span>
       </div>
-      <div class="panel-content">
+      <div class="modal-body">
+        <!-- 基本筛选部分 -->
         <div class="filter-section">
-          <h4>连接数筛选</h4>
-          <div class="filter-item">
+          <h3>基本筛选</h3>
+          <div
+            class="filter-item"
+            style="
+              display: flex;
+              flex-direction: column;
+              align-items: flex-start;
+            "
+          >
             <label>最小连接数:</label>
             <div class="slider-container">
-              <input type="range" id="min-connections" min="1" max="10" value="2" class="slider">
+              <input
+                type="range"
+                id="min-connections"
+                min="1"
+                max="10"
+                value="2"
+                class="slider"
+              />
               <span id="min-connections-value">2</span>
             </div>
           </div>
         </div>
+
         <div class="filter-section">
           <h4>节点类型筛选</h4>
-          <div class="filter-item">
-            <input type="checkbox" id="show-primary" checked>
-            <label for="show-primary">显示主要学者</label>
-          </div>
-          <div class="filter-item">
-            <input type="checkbox" id="show-secondary" checked>
-            <label for="show-secondary">显示关联学者</label>
+          <div class="filters-section">
+            <div class="filter-item">
+              <input type="checkbox" id="show-primary" checked />
+              <label for="show-primary">显示主要学者</label>
+            </div>
+            <div class="filter-item">
+              <input type="checkbox" id="show-secondary" checked />
+              <label for="show-secondary">显示关联学者</label>
+            </div>
           </div>
         </div>
+
         <div class="filter-section">
           <h4>关系类型筛选</h4>
-          <div class="filter-item">
-            <input type="checkbox" id="show-coauthor" checked>
-            <label for="show-coauthor">显示合作者关系</label>
-          </div>
-          <div class="filter-item">
-            <input type="checkbox" id="show-advisor" checked>
-            <label for="show-advisor">显示导师关系</label>
-          </div>
-          <div class="filter-item">
-            <input type="checkbox" id="show-colleague" checked>
-            <label for="show-colleague">显示同事关系</label>
+          <div class="filters-section">
+            <div class="filter-item">
+              <input type="checkbox" id="show-coauthor" checked />
+              <label for="show-coauthor">显示合作者关系</label>
+            </div>
+            <div class="filter-item">
+              <input type="checkbox" id="show-advisor" checked />
+              <label for="show-advisor">显示导师关系</label>
+            </div>
+            <div class="filter-item">
+              <input type="checkbox" id="show-colleague" checked />
+              <label for="show-colleague">显示同事关系</label>
+            </div>
           </div>
         </div>
-        <button id="apply-filters-btn" class="btn btn-primary">应用筛选</button>
+
+        <hr class="filter-divider" />
+
+        <!-- 自定义筛选部分 -->
+        <div class="filter-section">
+          <h3>自定义筛选条件</h3>
+          <div id="custom-filters-container">
+            <!-- 这里将动态添加筛选条件 -->
+          </div>
+          
+          <div class="add-filter-row">
+            <button id="add-filter-btn" class="btn btn-sm">
+              <i class="fas fa-plus"></i> 添加筛选条件
+            </button>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <div class="status-message" id="filter-status"></div>
         <button id="reset-filters-btn" class="btn">重置</button>
+        <button id="apply-filters-btn" class="btn btn-primary">应用筛选</button>
       </div>
     </div>
 
@@ -234,8 +301,9 @@
                 >上次更新: <span id="last-update-time">未知</span></span
               >
             </div>
-
+<!-- 
             <div class="scholar-add">
+              <div>
               <div class="form-group">
                 <label>学者名称:</label>
                 <input
@@ -254,17 +322,20 @@
                 <div class="hint-text">
                   可直接粘贴Scholar页面链接，系统会自动提取ID
                 </div>
-              </div>
+              </div></div>
               <button id="add-scholar-btn" class="btn">爬取学者</button>
             </div>
 
             <div class="scholar-batch">
               <textarea
                 id="batch-scholars"
-                placeholder="批量添加多位学者，每行一个名字..."
+                placeholder="批量添加多位学者，每行一个 Google Scholar ID 或页面链接或学者名称..."
               ></textarea>
+              <div class="hint-text">
+                推荐使用Scholar ID或页面链接，可避免重名问题。每行输入一个，系统会自动识别ID和名称
+              </div>
               <button id="batch-add-btn" class="btn">批量爬取</button>
-            </div>
+            </div> -->
 
             <div class="refresh-data">
               <button id="refresh-all-btn" class="btn btn-warning">
@@ -295,6 +366,15 @@
               </button>
               <div class="warning-text">
                 警告：此操作将清空所有数据，无法恢复！
+              </div>
+            </div>
+            
+            <div class="migrate-data">
+              <button id="migrate-data-btn" class="btn btn-danger">
+                清空并重新导入数据
+              </button>
+              <div class="warning-text">
+                警告：此操作将清空数据库并重新导入所有文件，耗时较长且无法撤销！
               </div>
             </div>
           </div>
@@ -342,15 +422,72 @@
       </div>
     </div>
 
+    <!-- 添加学者面板模态窗口 -->
+    <div id="add-scholar-modal" class="modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>添加学者</h2>
+          <span class="close-modal" id="close-add-scholar-modal">&times;</span>
+        </div>
+        <div class="modal-body">
+          <div class="section-header">
+            <h3>添加单个学者</h3>
+          </div>
+
+          <div class="scholar-add">
+            <div>
+              <div class="form-group">
+                <label>学者名称:</label>
+                <input
+                  type="text"
+                  id="add-scholar-input"
+                  placeholder="输入学者名称..."
+                />
+              </div>
+              <div class="form-group">
+                <label>Scholar ID 或页面链接:</label>
+                <input
+                  type="text"
+                  id="add-scholar-id"
+                  placeholder="输入Google Scholar ID或完整页面链接..."
+                />
+                <div class="hint-text">
+                  可直接粘贴Scholar页面链接，系统会自动提取ID
+                </div>
+              </div>
+            </div>
+            <button id="add-new-scholar-btn" class="btn">爬取学者</button>
+          </div>
+
+          <div class="scholar-batch">
+            <h3>批量添加学者</h3>
+            <textarea
+              id="add-batch-scholars"
+              placeholder="批量添加多位学者，每行一个 Google Scholar ID 或页面链接或学者名称..."
+            ></textarea>
+            <div class="hint-text">
+              推荐使用Scholar ID或页面链接，可避免重名问题。每行输入一个，系统会自动识别ID和名称
+            </div>
+            <button id="add-batch-scholars-btn" class="btn">批量爬取</button>
+          </div>
+
+        </div>
+        <div class="modal-footer">
+          <div class="status-message" id="add-scholar-status"></div>
+          <button id="close-add-scholar-btn" class="btn">关闭</button>
+        </div>
+      </div>
+    </div>
+
     <!-- 引入JavaScript模块 -->
     <script type="module">
-      import { init } from './js/core.js';
-      
+      import { init } from "./js/core.js";
+
       // 等待DOM加载完成后初始化
-      document.addEventListener('DOMContentLoaded', () => {
-        init().catch(error => {
-          console.error('初始化失败:', error);
-          alert('系统初始化失败，请刷新页面重试。');
+      document.addEventListener("DOMContentLoaded", () => {
+        init().catch((error) => {
+          console.error("初始化失败:", error);
+          alert("系统初始化失败，请刷新页面重试。");
         });
       });
     </script>

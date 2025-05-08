@@ -327,12 +327,13 @@ main {
 /* 研究方向标签 */
 .interest-tag {
     display: inline-block;
-    background-color: var(--primary-color);
+    padding: 3px 8px;
+    margin: 2px 4px 2px 0;
+    background-color: #1a73e8;
     color: white;
-    font-size: 0.75rem;
-    padding: 0.2rem 0.5rem;
-    border-radius: var(--border-radius-sm);
-    margin: 0.2rem;
+    border-radius: 12px;
+    font-size: 0.9em;
+    font-weight: 500;
     white-space: nowrap;
 }
 
@@ -705,7 +706,7 @@ footer {
 
 .modal-body {
     padding: 1.5rem;
-    overflow-y: auto;
+    overflow-y: scroll !important;
     max-height: calc(85vh - 130px);
 }
 
@@ -1541,7 +1542,7 @@ footer {
 }
 
 /* 初始化数据库区域 */
-.init-database {
+.init-database, .migrate-data {
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
@@ -1765,68 +1766,195 @@ footer {
 /* 筛选面板样式 */
 .filter-panel {
     position: fixed;
-    top: 70px;
-    right: -350px;
-    width: 320px;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 80%;
+    height: 80%;
+    max-width: 900px;
     background-color: white;
-    border-radius: var(--border-radius-md);
-    box-shadow: var(--shadow-md);
-    transition: right 0.3s ease;
+    border-radius: var(--border-radius-lg);
+    box-shadow: var(--shadow-lg);
+    transition: all 0.3s ease;
     z-index: 50;
     display: flex;
     flex-direction: column;
-    max-height: calc(100vh - 100px);
     overflow: hidden;
+    opacity: 0;
+    visibility: hidden;
+    animation: modalFadeIn 0.3s;
 }
 
 .filter-panel.visible {
-    right: 20px;
+    opacity: 1;
+    visibility: visible;
 }
 
-.filter-panel .panel-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 15px;
-    border-bottom: 1px solid #eee;
-    background-color: var(--gray-light);
+/* 筛选内容区域 */
+#filter-panel .modal-body {
+    flex: 1;
+    overflow-y: scroll !important;
+    padding: 1.5rem;
 }
 
-.filter-panel .panel-header h3 {
-    margin: 0;
-    font-size: 1.1rem;
-    color: var(--dark-color);
-}
-
-.filter-panel .close-panel {
-    cursor: pointer;
-    font-size: 1.5rem;
-    line-height: 1;
-    color: var(--gray-dark);
-    transition: color 0.2s;
-}
-
-.filter-panel .close-panel:hover {
+/* 筛选标题样式 */
+#filter-panel h3 {
+    margin-top: 1rem;
+    margin-bottom: 1rem;
+    font-size: 1.2rem;
     color: var(--primary-color);
+    font-weight: 600;
+    border-bottom: 2px solid var(--primary-color);
+    padding-bottom: 0.5rem;
 }
 
-.filter-panel .panel-content {
-    padding: 15px;
-    overflow-y: auto;
-}
-
-.filter-section {
-    margin-bottom: 20px;
-}
-
-.filter-section h4 {
+#filter-panel h4 {
+    margin-top: 0.8rem;
+    margin-bottom: 0.8rem;
     font-size: 1rem;
-    margin-bottom: 10px;
     color: var(--dark-color);
-    border-bottom: 1px solid #eee;
-    padding-bottom: 5px;
 }
 
+/* 筛选部分样式 */
+#filter-panel .filter-section {
+    margin-bottom: 1.2rem;
+    padding-bottom: 0.5rem;
+}
+
+/* 添加分割线样式 */
+.filter-divider {
+    border: 0;
+    height: 1px;
+    background-color: #e0e0e0;
+    margin: 1rem 0;
+}
+
+/* 并排表单行样式 */
+.form-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    margin-bottom: 15px;
+}
+
+.form-group-inline {
+    flex: 1;
+    min-width: 200px;
+    display: flex;
+    flex-direction: column;
+}
+
+.form-group-inline label {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--dark-color);
+    margin-bottom: 5px;
+}
+
+.form-group-inline input,
+.form-group-inline select {
+    padding: 0.7rem;
+    border: 1px solid #ddd;
+    border-radius: var(--border-radius-sm);
+    font-size: 0.9rem;
+}
+
+/* 年份范围调整 */
+.year-range {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.year-range input {
+    flex: 1;
+    max-width: 120px;
+}
+
+.year-separator {
+    color: var(--gray-dark);
+}
+
+/* 筛选状态消息 */
+#filter-status {
+    flex: 1;
+    text-align: left;
+    font-size: 0.9rem;
+}
+
+/* 表单组样式调整，减小垂直间距 */
+#filter-panel .form-group {
+    margin-bottom: 12px;
+}
+
+#filter-panel input[type="text"],
+#filter-panel input[type="number"],
+#filter-panel select {
+    width: 100%;
+    padding: 0.7rem;
+    border: 1px solid #ddd;
+    border-radius: var(--border-radius-sm);
+    font-size: 0.95rem;
+    background-color: white;
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+    .filter-panel {
+        width: 95%;
+        max-height: 95vh;
+    }
+    
+    .form-row {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .form-group-inline {
+        width: 100%;
+    }
+}
+
+/* 筛选面板遮罩层 */
+.filter-overlay {
+    display: none;
+    position: fixed;
+    z-index: 49;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    overflow: auto;
+}
+
+.filter-overlay.visible {
+    display: block;
+}
+
+/* 滑块容器样式 */
+.slider-container {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    margin-top: 8px;
+}
+
+.slider {
+    flex: 1;
+    margin: 0 10px;
+}
+
+#min-connections-value {
+    min-width: 20px;
+    text-align: center;
+}
+.filters-section {
+    display: flex;
+    flex-direction: row;
+    gap: 10px;
+}
+/* 筛选项样式 */
 .filter-item {
     display: flex;
     align-items: center;
@@ -1842,91 +1970,6 @@ footer {
     width: 16px;
     height: 16px;
     cursor: pointer;
-}
-
-.slider-container {
-    display: flex;
-    align-items: center;
-    width: 100%;
-}
-
-.slider {
-    flex: 1;
-    margin: 0 10px;
-}
-
-#min-connections-value {
-    min-width: 20px;
-    text-align: center;
-}
-
-.filter-panel .btn {
-    margin-right: 10px;
-    margin-top: 10px;
-}
-
-/* 搜索结果样式 */
-.search-results {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  width: 100%;
-  background-color: #fff;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-  max-height: 300px;
-  overflow-y: auto;
-  z-index: 1000;
-}
-
-.search-result-item {
-  padding: 8px 12px;
-  border-bottom: 1px solid #eee;
-  cursor: pointer;
-  transition: background-color 0.2s;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.search-result-item:hover {
-  background-color: #f5f5f5;
-}
-
-.search-result-item .result-name {
-  font-weight: 500;
-}
-
-.search-result-item .result-type {
-  font-size: 0.8em;
-  color: #777;
-}
-
-.more-results {
-  padding: 8px 12px;
-  text-align: center;
-  color: #777;
-  font-style: italic;
-  font-size: 0.9em;
-}
-
-.no-results {
-  padding: 12px;
-  text-align: center;
-  color: #777;
-}
-
-/* 相关学者列表项样式，使其看起来可点击 */
-.related-scholar-item {
-  cursor: pointer;
-  padding: 8px 0;
-  border-bottom: 1px solid #eee;
-  transition: background-color 0.2s;
-}
-
-.related-scholar-item:hover {
-  background-color: #f5f5f5;
 }
 
 /* 状态指示器 */
@@ -1953,4 +1996,157 @@ footer {
   100% {
     opacity: 0.7;
   }
+}
+
+/* 自定义筛选条件样式 */
+.add-filter-row {
+    margin-top: 15px;
+    display: flex;
+    justify-content: center;
+}
+
+.custom-filter-item {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 10px;
+    background-color: #f9f9f9;
+    padding: 12px;
+    border-radius: var(--border-radius-sm);
+    margin-bottom: 10px;
+    position: relative;
+    border-left: 3px solid var(--primary-color);
+}
+
+.filter-content {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.filter-dimension-select {
+    flex: 2;
+    min-width: 200px;
+}
+
+.filter-operator-select {
+    width: 120px;
+    min-width: 120px;
+}
+
+.filter-value-input {
+    flex: 1;
+    min-width: 150px;
+}
+
+.remove-filter-btn {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: none;
+    border: none;
+    color: var(--gray-dark);
+    cursor: pointer;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+}
+
+.remove-filter-btn:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+    color: var(--warning-color);
+}
+
+.filter-type-label {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    font-size: 0.8rem;
+    color: var(--gray-dark);
+}
+
+.filter-content {
+    width: 100%;
+    margin-top: 20px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+/* 筛选条件类型指示器 */
+.custom-filter-item[data-filter-type="scholar"] {
+    border-left-color: var(--primary-color);
+}
+
+.custom-filter-item[data-filter-type="publication"] {
+    border-left-color: var(--secondary-color);
+}
+
+.custom-filter-item[data-filter-type="institution"] {
+    border-left-color: var(--accent-color);
+}
+
+/* 筛选条件行样式 */
+.filter-condition-row {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 10px;
+    width: 100%;
+}
+
+.filter-dimension-select {
+    flex: 3;
+    min-width: 200px;
+}
+
+.filter-operator-select {
+    flex: 1;
+    min-width: 120px;
+}
+
+.filter-value-input {
+    width: 100%;
+    min-width: 150px;
+}
+
+/* 优化论文样式 */
+.publication-item {
+    margin-bottom: 12px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #eee;
+}
+
+.publication-title {
+    font-weight: 500;
+    color: #333;
+    margin-bottom: 4px;
+}
+
+.publication-details {
+    font-size: 0.9em;
+    color: #666;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.publication-details .venue {
+    margin-right: 8px;
+    font-style: italic;
+}
+
+.publication-details .year {
+    margin-right: 8px;
+}
+
+.publication-details .citations {
+    color: #1a73e8;
+    font-weight: 500;
+}
+
+.publication-details .citations i {
+    margin-right: 2px;
 } 

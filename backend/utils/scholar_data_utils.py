@@ -16,7 +16,7 @@ def create_scholar_node(scholar_id, data, is_secondary=False):
     Args:
         scholar_id: 学者ID
         data: 学者数据字典
-        is_secondary: 是否为次要学者
+        is_secondary: 是否为关联学者
         
     Returns:
         dict: 学者节点数据

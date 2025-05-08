@@ -52,17 +52,26 @@ async function initApp() {
       const reloadBtn = document.getElementById('reload-data-btn');
       if (reloadBtn) {
         reloadBtn.addEventListener('click', async function() {
+          // 设置按钮为加载状态
+          const originalText = this.innerHTML;
           this.disabled = true;
           this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 加载中...';
           
           try {
             await reloadData();
-            this.disabled = false;
-            this.innerHTML = '<i class="fas fa-sync-alt"></i> 刷新数据';
+            // 显示成功消息
+            const statusElement = document.getElementById('data-status');
+            if (statusElement) {
+              statusElement.textContent = '数据已成功刷新';
+              statusElement.style.display = 'block';
+              setTimeout(() => {
+                statusElement.style.display = 'none';
+              }, 3000);
+            }
           } catch (error) {
             console.error('刷新数据失败:', error);
-            this.disabled = false;
-            this.innerHTML = '<i class="fas fa-sync-alt"></i> 刷新数据';
+            // 显示错误消息
+            const statusElement = document.getElementById('data-status');
             if (statusElement) {
               statusElement.textContent = '刷新数据失败';
               statusElement.style.display = 'block';
@@ -70,6 +79,10 @@ async function initApp() {
                 statusElement.style.display = 'none';
               }, 3000);
             }
+          } finally {
+            // 恢复按钮状态
+            this.disabled = false;
+            this.innerHTML = '<i class="fas fa-sync-alt"></i> 刷新数据';
           }
         });
       }

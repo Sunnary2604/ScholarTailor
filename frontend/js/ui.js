@@ -4,7 +4,7 @@
  */
 
 import { formatDateTime } from "./utils.js";
-import { fetchScholarDetails, updateScholar, addScholar, API_BASE_URL } from "./api.js";
+import { fetchScholarDetails, updateScholar, addScholar, API_BASE_URL, migrateData } from "./api.js";
 import { addNewScholar, getScholarById } from "./data.js";
 import { getFCoseLayoutOptions } from "./graph.js";
 import { applyLayout } from "./core.js";
@@ -62,16 +62,24 @@ function updateDetailPanelUI(scholarData) {
       affiliationEl.textContent = scholarData.affiliation || "-";
     }
 
-    // 设置研究方向
+    // 设置研究方向 - 改为蓝底白字的tag样式
     const interestsEl = document.querySelector("#scholar-interests .value");
     if (interestsEl) {
-      interestsEl.textContent = scholarData.interests || "-";
+      if (scholarData.interests && scholarData.interests.length > 0) {
+        let interestsHTML = "";
+        scholarData.interests.forEach((interest) => {
+          interestsHTML += `<span class="interest-tag">${interest}</span>`;
+        });
+        interestsEl.innerHTML = interestsHTML;
+      } else {
+        interestsEl.textContent = "-";
+      }
     }
 
     // 设置引用次数
     const citationsEl = document.querySelector("#scholar-citations .value");
     if (citationsEl) {
-      citationsEl.textContent = scholarData.citations || "-";
+      citationsEl.textContent = scholarData.citedby || scholarData.citations || "-";
     }
 
     // 设置个人网页
@@ -101,41 +109,43 @@ function updateDetailPanelUI(scholarData) {
     // 设置自定义字段
     const customFieldsEl = document.querySelector(".custom-fields-content");
     if (customFieldsEl) {
-      if (
-        scholarData.custom_fields &&
-        Object.keys(scholarData.custom_fields).length > 0
-      ) {
-        let customFieldsHTML = "";
-        for (const [key, value] of Object.entries(scholarData.custom_fields)) {
-          customFieldsHTML += `<p><strong>${key}:</strong> ${value}</p>`;
-        }
-        customFieldsEl.innerHTML = customFieldsHTML;
+      // 根据学者类型设置不同内容
+      if (scholarData.nodeType === 'primary' || scholarData.is_main_scholar) {
+        // 主要学者
+        customFieldsEl.innerHTML = '<p>这是主要学者，已包含详细数据。</p>';
       } else {
-        customFieldsEl.innerHTML = "<p>暂无自定义字段</p>";
+        // 关联学者
+        customFieldsEl.innerHTML = '<p>这是关联学者，仅作为合作者出现。可以爬取更多详细数据。</p>';
+      }
+      
+      // 如果有自定义字段，显示它们
+      if (scholarData.custom_fields && Object.keys(scholarData.custom_fields).length > 0) {
+        let customHTML = '<dl class="custom-fields-list">';
+        for (const [key, value] of Object.entries(scholarData.custom_fields)) {
+          // 跳过tags字段，它已经单独显示
+          if (key === 'tags') continue;
+          customHTML += `<dt>${key}:</dt><dd>${value}</dd>`;
+        }
+        customHTML += '</dl>';
+        customFieldsEl.innerHTML += customHTML;
       }
     }
 
-    // 设置论文列表
+    // 设置论文列表 - 简化显示，不显示作者
     const publicationListEl = document.getElementById("publication-list");
     if (publicationListEl) {
       if (scholarData.publications && scholarData.publications.length > 0) {
         let publicationsHTML = "";
         scholarData.publications.forEach((pub) => {
           publicationsHTML += `
-            <li>
-              <div class="publication-title">${pub.title}</div>
+            <li class="publication-item">
+              <div class="publication-title">${pub.title || "未知标题"}</div>
               <div class="publication-details">
-                ${
-                  pub.authors
-                    ? `<span class="authors">${pub.authors}</span>`
-                    : ""
-                }
+                ${pub.venue ? `<span class="venue">${pub.venue}</span>` : ""}
                 ${pub.year ? `<span class="year">${pub.year}</span>` : ""}
-                ${
-                  pub.citations
-                    ? `<span class="citations">引用: ${pub.citations}</span>`
-                    : ""
-                }
+                ${(pub.citedby || pub.citations) ? 
+                  `<span class="citations"><i class="fas fa-quote-right"></i> ${pub.citedby || pub.citations}</span>` : 
+                  ""}
               </div>
             </li>
           `;
@@ -211,34 +221,73 @@ function updateDetailPanelUI(scholarData) {
       const newFetchBtn = fetchBtn.cloneNode(true);
       fetchBtn.parentNode.replaceChild(newFetchBtn, fetchBtn);
 
+      // 如果是主要学者，隐藏爬取按钮
+      if (scholarData.nodeType === 'primary' || scholarData.is_main_scholar) {
+        newFetchBtn.style.display = 'none';
+      } else {
+        newFetchBtn.style.display = 'inline-block';
+
       // 添加新的事件监听器
       newFetchBtn.addEventListener("click", () => {
-        // 使用update API更新学者信息
-        fetch(`${API_BASE_URL}/scholars/update`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({id: scholarData.id})
-        })
-        .then(response => response.json())
-        .then(data => {
-          if (data.success) {
-            // 更新成功后，重新获取学者数据
-            getScholarById(scholarData.id)
-              .then(updatedScholar => {
-                updateScholarData(updatedScholar);
-              });
-            // 显示成功消息
-            showStatusMessage("成功更新学者数据", "success");
-          } else {
-            showStatusMessage("更新学者数据失败: " + (data.error || "未知错误"), "error");
-          }
-        })
-        .catch(error => {
-          showStatusMessage("更新学者数据时出错: " + error, "error");
-        });
+          // 设置按钮为加载状态
+          const originalText = newFetchBtn.innerHTML;
+          newFetchBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 爬取中...';
+          newFetchBtn.disabled = true;
+          
+          // 使用update API更新学者信息
+          fetch(`${API_BASE_URL}/scholars/update`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({id: scholarData.id})
+          })
+          .then(response => response.json())
+          .then(data => {
+            // 恢复按钮状态
+            newFetchBtn.innerHTML = originalText;
+            newFetchBtn.disabled = false;
+            
+            if (data.success) {
+              // 更新成功后，重新获取学者数据
+              getScholarById(scholarData.id)
+                .then(updatedScholar => {
+                  // 更新本地数据
+                  window.scholars[scholarData.id] = updatedScholar;
+                  
+                  // 更新关联学者状态为主要学者
+                  updatedScholar.is_main_scholar = 1;
+                  updatedScholar.nodeType = 'primary';
+                  
+                  // 更新UI
+                  updateDetailPanelUI(updatedScholar);
+                  
+                  // 隐藏爬取按钮 (因为现在是主要学者)
+                  newFetchBtn.style.display = 'none';
+                  
+                  // 更新图上的节点类型
+                  if (window.cy) {
+                    const node = window.cy.getElementById(scholarData.id);
+                    if (node.length > 0) {
+                      node.data('nodeType', 'primary');
+                      node.removeClass('secondary-node').addClass('primary-node');
+                    }
+                  }
+                });
+              // 显示成功消息
+              showStatusMessage("成功更新学者数据", "success");
+            } else {
+              showStatusMessage("更新学者数据失败: " + (data.error || "未知错误"), "error");
+            }
+          })
+          .catch(error => {
+            // 恢复按钮状态
+            newFetchBtn.innerHTML = originalText;
+            newFetchBtn.disabled = false;
+            showStatusMessage("更新学者数据时出错: " + error, "error");
+          });
       });
+      }
     }
 
     // 设置Google Scholar链接
@@ -327,6 +376,165 @@ export function clearDetailPanel() {
 }
 
 /**
+ * 设置添加学者面板事件
+ */
+export function setupAddScholarPanel() {
+  // 添加学者面板按钮
+  const addScholarPanelBtn = document.getElementById("add-scholar-panel-btn");
+  const addScholarModal = document.getElementById("add-scholar-modal");
+  const closeAddScholarModal = document.getElementById("close-add-scholar-modal");
+  const closeAddScholarBtn = document.getElementById("close-add-scholar-btn");
+
+  if (!addScholarPanelBtn || !addScholarModal) return;
+
+  // 打开添加学者面板
+  addScholarPanelBtn.addEventListener("click", function () {
+    addScholarModal.style.display = "block";
+  });
+
+  // 关闭添加学者面板
+  if (closeAddScholarModal) {
+    closeAddScholarModal.addEventListener("click", function () {
+      addScholarModal.style.display = "none";
+    });
+  }
+
+  if (closeAddScholarBtn) {
+    closeAddScholarBtn.addEventListener("click", function () {
+      addScholarModal.style.display = "none";
+    });
+  }
+
+  // 点击模态窗口外部关闭
+  window.addEventListener("click", function (event) {
+    if (event.target === addScholarModal) {
+      addScholarModal.style.display = "none";
+    }
+  });
+
+  // 添加单个学者按钮
+  const addNewScholarBtn = document.getElementById("add-new-scholar-btn");
+  if (addNewScholarBtn) {
+    addNewScholarBtn.addEventListener("click", function() {
+      const nameInput = document.getElementById("add-scholar-input");
+      const idInput = document.getElementById("add-scholar-id");
+      
+      if (!nameInput || !idInput) return;
+      
+      const name = nameInput.value.trim();
+      const scholarId = idInput.value.trim();
+      
+      if (!name && !scholarId) {
+        showAddScholarStatus("请输入学者名称或ID", "error");
+        return;
+      }
+      
+      // 显示加载状态
+      addNewScholarBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 爬取中...';
+      addNewScholarBtn.disabled = true;
+      
+      // 添加学者
+      addNewScholar({ name, scholar_id: scholarId })
+        .then(result => {
+          // 恢复按钮状态
+          addNewScholarBtn.innerHTML = '爬取学者';
+          addNewScholarBtn.disabled = false;
+          
+          if (result && result.success) {
+            nameInput.value = "";
+            idInput.value = "";
+            showAddScholarStatus(`成功添加学者 ${result.scholar_name || name}`, "success");
+          } else {
+            showAddScholarStatus(`添加学者失败: ${result?.error || '未知错误'}`, "error");
+          }
+        })
+        .catch(error => {
+          // 恢复按钮状态
+          addNewScholarBtn.innerHTML = '爬取学者';
+          addNewScholarBtn.disabled = false;
+          showAddScholarStatus(`添加学者时出错: ${error.message || '未知错误'}`, "error");
+        });
+    });
+  }
+  
+  // 批量添加学者按钮
+  const addBatchScholarsBtn = document.getElementById("add-batch-scholars-btn");
+  if (addBatchScholarsBtn) {
+    addBatchScholarsBtn.addEventListener("click", function() {
+      const batchInput = document.getElementById("add-batch-scholars");
+      if (!batchInput) return;
+      
+      const batchText = batchInput.value.trim();
+      if (!batchText) {
+        showAddScholarStatus("请输入要批量添加的学者", "error");
+        return;
+      }
+      
+      // 解析输入文本，每行一个学者
+      const scholarLines = batchText.split('\n').filter(line => line.trim());
+      if (scholarLines.length === 0) {
+        showAddScholarStatus("未找到有效的学者信息", "error");
+        return;
+      }
+      
+      // 显示加载状态
+      addBatchScholarsBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 批量爬取中...';
+      addBatchScholarsBtn.disabled = true;
+      showAddScholarStatus(`正在批量爬取 ${scholarLines.length} 位学者，请耐心等待...`, "info");
+      
+      // 调用API批量添加
+      fetch(`${API_BASE_URL}/scholars/batch-add`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ scholars: scholarLines })
+      })
+      .then(response => response.json())
+      .then(data => {
+        // 恢复按钮状态
+        addBatchScholarsBtn.innerHTML = '批量爬取';
+        addBatchScholarsBtn.disabled = false;
+        
+        if (data.success) {
+          batchInput.value = "";
+          showAddScholarStatus(`成功添加 ${data.added}/${scholarLines.length} 位学者`, "success");
+        } else {
+          showAddScholarStatus(`批量添加学者失败: ${data.error || '未知错误'}`, "error");
+        }
+      })
+      .catch(error => {
+        // 恢复按钮状态
+        addBatchScholarsBtn.innerHTML = '批量爬取';
+        addBatchScholarsBtn.disabled = false;
+        showAddScholarStatus(`批量添加学者时出错: ${error.message || '未知错误'}`, "error");
+      });
+    });
+  }
+}
+
+/**
+ * 显示添加学者面板状态消息
+ * @param {string} message - 消息内容
+ * @param {string} type - 消息类型 (info, success, error)
+ */
+function showAddScholarStatus(message, type = "info") {
+  const statusDiv = document.getElementById("add-scholar-status");
+  if (!statusDiv) return;
+  
+  statusDiv.textContent = message;
+  statusDiv.className = "status-message " + type;
+  
+  // 3秒后自动清除成功信息，错误信息保留
+  if (type !== "error") {
+    setTimeout(() => {
+      statusDiv.textContent = "";
+      statusDiv.className = "status-message";
+    }, 3000);
+  }
+}
+
+/**
  * 设置管理面板事件
  */
 export function setupAdminPanel() {
@@ -376,20 +584,37 @@ export function setupAdminPanel() {
       const name = nameInput.value.trim();
       const scholarId = idInput.value.trim();
       
-      if (!name) {
-        showAdminStatus("请输入学者名称", "error");
+      if (!name && !scholarId) {
+        showAdminStatus("请输入学者名称或ID", "error");
         return;
       }
       
+      // 显示加载状态
+      addScholarBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 爬取中...';
+      addScholarBtn.disabled = true;
+      
+      // 添加学者
       addNewScholar({ name, scholar_id: scholarId })
-        .then(success => {
-          if (success) {
+        .then(result => {
+          // 恢复按钮状态
+          addScholarBtn.innerHTML = '爬取学者';
+          addScholarBtn.disabled = false;
+          
+          if (result && result.success) {
             nameInput.value = "";
             idInput.value = "";
-            showAdminStatus("成功添加学者", "success");
+            showAdminStatus(`成功添加学者 ${result.scholar_name || name}`, "success");
+          } else {
+            showAdminStatus(`添加学者失败: ${result?.error || '未知错误'}`, "error");
           }
+        })
+        .catch(error => {
+          // 恢复按钮状态
+          addScholarBtn.innerHTML = '爬取学者';
+          addScholarBtn.disabled = false;
+          showAdminStatus(`添加学者时出错: ${error.message || '未知错误'}`, "error");
+        });
     });
-  });
   }
 
   // 设置添加标签功能
@@ -400,6 +625,159 @@ export function setupAdminPanel() {
 
   // 设置筛选面板
   setupFilterPanel();
+
+  // 数据库初始化按钮点击事件
+  const initDbBtn = document.getElementById("init-db-btn");
+  if (initDbBtn) {
+    initDbBtn.addEventListener("click", function () {
+      if (confirm("警告：此操作将清空数据库中的所有数据，无法恢复！确认继续？")) {
+        // 显示加载状态
+        initDbBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 初始化中...';
+        initDbBtn.disabled = true;
+        
+        fetch(`${API_BASE_URL}/initialize-database`, {
+          method: "POST",
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            // 恢复按钮状态
+            initDbBtn.innerHTML = '初始化数据库';
+            initDbBtn.disabled = false;
+            
+            if (data.success) {
+              showAdminStatus("数据库初始化成功！", "success");
+              setTimeout(() => {
+                window.location.reload();
+              }, 2000);
+            } else {
+              showAdminStatus(`初始化失败：${data.message}`, "error");
+            }
+          })
+          .catch((error) => {
+            // 恢复按钮状态
+            initDbBtn.innerHTML = '初始化数据库';
+            initDbBtn.disabled = false;
+            
+            console.error("初始化数据库失败:", error);
+            showAdminStatus(`初始化失败：${error.message}`, "error");
+          });
+      }
+    });
+  }
+  
+  // 数据迁移按钮点击事件
+  const migrateDataBtn = document.getElementById("migrate-data-btn");
+  if (migrateDataBtn) {
+    migrateDataBtn.addEventListener("click", function () {
+      if (confirm("警告：此操作将清空数据库并重新导入所有数据，耗时较长且无法撤销！确认继续？")) {
+        // 显示状态
+        showAdminStatus("正在清空数据库并重新导入数据，这可能需要几分钟...", "info");
+        
+        // 禁用按钮，防止重复点击
+        this.disabled = true;
+        this.textContent = "导入中...";
+        
+        // 调用数据迁移API
+        migrateData()
+          .then((data) => {
+            if (data.success) {
+              showAdminStatus(`数据迁移成功！${data.message}`, "success");
+              setTimeout(() => {
+                window.location.reload();
+              }, 2000);
+            } else {
+              showAdminStatus(`数据迁移失败：${data.message}`, "error");
+              // 恢复按钮状态
+              this.disabled = false;
+              this.textContent = "清空并重新导入数据";
+            }
+          })
+          .catch((error) => {
+            console.error("数据迁移失败:", error);
+            showAdminStatus(`数据迁移失败：${error.message}`, "error");
+            // 恢复按钮状态
+            this.disabled = false;
+            this.textContent = "清空并重新导入数据";
+          });
+      }
+    });
+  }
+  
+  // 批量添加学者按钮
+  const batchAddBtn = document.getElementById("batch-add-btn");
+  if (batchAddBtn) {
+    batchAddBtn.addEventListener("click", function() {
+      const batchInput = document.getElementById("batch-scholars");
+      if (!batchInput) return;
+      
+      const batchText = batchInput.value.trim();
+      if (!batchText) {
+        showAdminStatus("请输入要批量添加的学者", "error");
+        return;
+      }
+      
+      // 解析输入文本，每行一个学者
+      const scholarLines = batchText.split('\n').filter(line => line.trim());
+      if (scholarLines.length === 0) {
+        showAdminStatus("未找到有效的学者信息", "error");
+        return;
+      }
+      
+      // 显示加载状态
+      batchAddBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 批量爬取中...';
+      batchAddBtn.disabled = true;
+      showAdminStatus(`正在批量爬取 ${scholarLines.length} 位学者，请耐心等待...`, "info");
+      
+      // 调用API批量添加
+      fetch(`${API_BASE_URL}/scholars/batch-add`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ scholars: scholarLines })
+      })
+      .then(response => response.json())
+      .then(data => {
+        // 恢复按钮状态
+        batchAddBtn.innerHTML = '批量爬取';
+        batchAddBtn.disabled = false;
+        
+        if (data.success) {
+          batchInput.value = "";
+          showAdminStatus(`成功添加 ${data.added}/${scholarLines.length} 位学者`, "success");
+        } else {
+          showAdminStatus(`批量添加学者失败: ${data.error || '未知错误'}`, "error");
+        }
+      })
+      .catch(error => {
+        // 恢复按钮状态
+        batchAddBtn.innerHTML = '批量爬取';
+        batchAddBtn.disabled = false;
+        showAdminStatus(`批量添加学者时出错: ${error.message || '未知错误'}`, "error");
+      });
+    });
+  }
+}
+
+/**
+ * 显示管理面板状态消息
+ * @param {string} message - 消息内容
+ * @param {string} type - 消息类型 (info, success, error)
+ */
+export function showAdminStatus(message, type = "info") {
+  const statusDiv = document.getElementById("admin-status");
+  if (!statusDiv) return;
+  
+  statusDiv.textContent = message;
+  statusDiv.className = "status-message " + type;
+  
+  // 3秒后自动清除成功信息，错误信息保留
+  if (type !== "error") {
+    setTimeout(() => {
+      statusDiv.textContent = "";
+      statusDiv.className = "status-message";
+    }, 3000);
+  }
 }
 
 /**
@@ -427,6 +805,9 @@ function setupLayoutControls() {
           
           resetLayoutBtn.innerHTML = '<i class="fas fa-sync-alt"></i> 重新布局';
           resetLayoutBtn.disabled = false;
+          
+          // 显示成功消息
+          showStatusMessage("布局已重新应用", "success");
         });
       } else {
         // 如果layout对象未正确返回，3秒后恢复按钮状态
@@ -440,6 +821,47 @@ function setupLayoutControls() {
           resetLayoutBtn.disabled = false;
         }, 3000);
       }
+    });
+  }
+  
+  // 重置视图按钮
+  const resetViewBtn = document.getElementById('reset-view-btn');
+  if (resetViewBtn) {
+    resetViewBtn.addEventListener('click', function() {
+      if (window.cy) {
+        // 显示加载状态
+        resetViewBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 重置中...';
+        resetViewBtn.disabled = true;
+        
+        // 重置视图
+        window.cy.fit();
+        window.cy.center();
+        
+        // 恢复按钮状态
+        setTimeout(function() {
+          resetViewBtn.innerHTML = '<i class="fas fa-expand-arrows-alt"></i> 重置视图';
+          resetViewBtn.disabled = false;
+          
+          // 显示成功消息
+          showStatusMessage("视图已重置", "success");
+        }, 500);
+      }
+    });
+  }
+  
+  // 刷新数据按钮
+  const reloadDataBtn = document.getElementById('reload-data-btn');
+  if (reloadDataBtn) {
+    reloadDataBtn.addEventListener('click', function() {
+      // 显示加载状态
+      reloadDataBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 刷新中...';
+      reloadDataBtn.disabled = true;
+      
+      // 刷新页面
+      showStatusMessage("正在刷新数据...", "info");
+      setTimeout(function() {
+        window.location.reload();
+      }, 500);
     });
   }
 }
@@ -642,310 +1064,37 @@ function saveScholarTags() {
 }
 
 /**
- * 显示管理面板状态消息
- * @param {string} message - 消息内容
- * @param {string} type - 消息类型 (info, success, error)
- */
-export function showAdminStatus(message, type = "info") {
-  const statusDiv = document.getElementById("admin-status");
-  if (!statusDiv) return;
-  
-  statusDiv.textContent = message;
-  statusDiv.className = "status-message " + type;
-  
-  // 3秒后自动清除
-    setTimeout(() => {
-    statusDiv.textContent = "";
-    statusDiv.className = "status-message";
-  }, 3000);
-}
-
-/**
- * 显示状态消息
- * @param {string} message - 消息内容
- * @param {string} type - 消息类型 (info, success, error)
- */
-function showStatusMessage(message, type = "info") {
-  // 创建一个临时消息元素
-  const messageDiv = document.createElement("div");
-  messageDiv.className = `status-message-popup ${type}`;
-  messageDiv.textContent = message;
-  
-  // 添加到页面
-  document.body.appendChild(messageDiv);
-  
-  // 淡入
-    setTimeout(() => {
-    messageDiv.classList.add("visible");
-  }, 10);
-  
-  // 3秒后淡出并移除
-  setTimeout(() => {
-    messageDiv.classList.remove("visible");
-    setTimeout(() => {
-      document.body.removeChild(messageDiv);
-    }, 500);
-  }, 3000);
-}
-
-/**
- * 更新学者数据
- * @param {Object} scholar - 学者数据
- */
-function updateScholarData(scholar) {
-  if (!scholar || !scholar.id) return;
-  
-  // 通过API获取最新学者数据
-  getScholarById(scholar.id)
-    .then(latestScholar => {
-      // 更新内存中的学者数据
-      window.scholars[scholar.id] = latestScholar;
-      
-      // 更新详情面板
-      updateDetailPanelUI(latestScholar);
-      
-      // 显示成功消息
-      showStatusMessage("成功更新学者数据", "success");
-    })
-    .catch(error => {
-      console.error("获取学者数据失败:", error);
-      showStatusMessage("获取学者数据失败", "error");
-    });
-}
-
-/**
- * 加载管理面板数据
- */
-function loadAdminPanelData() {
-  // 填充学者选择框
-  const sourceSelector = document.getElementById("source-scholar");
-  const targetSelector = document.getElementById("target-scholar");
-  
-  if (!sourceSelector || !targetSelector) return;
-  
-  // 清空选择框
-  sourceSelector.innerHTML = "";
-  targetSelector.innerHTML = "";
-  
-  // 添加选项
-  Object.entries(window.scholars).forEach(([id, scholar]) => {
-    const option = document.createElement("option");
-    option.value = id;
-    option.textContent = scholar.name;
-    
-    // 添加到源选择框
-    sourceSelector.appendChild(option.cloneNode(true));
-    
-    // 添加到目标选择框
-    targetSelector.appendChild(option);
-  });
-}
-
-/**
- * 设置标签筛选功能
- */
-export function setupTagFiltering() {
-  // 收集所有标签
-  const allTags = new Set();
-
-  for (const scholarId in window.scholars) {
-    const scholar = window.scholars[scholarId];
-    if (scholar.tags && Array.isArray(scholar.tags)) {
-      scholar.tags.forEach((tag) => allTags.add(tag));
-    }
-  }
-
-  // 创建标签筛选区域
-  if (allTags.size > 0) {
-    const tagFiltersContainer = document.createElement("div");
-    tagFiltersContainer.className = "toolbar-group tag-filters";
-    tagFiltersContainer.innerHTML = "<span class='toolbar-label'>标签:</span>";
-
-    const tagsContainer = document.createElement("div");
-    tagsContainer.className = "filter-tags-container";
-
-    allTags.forEach((tag) => {
-      const tagSpan = document.createElement("span");
-      tagSpan.className = "filter-tag";
-      tagSpan.setAttribute("data-tag", tag);
-      tagSpan.textContent = tag;
-      tagSpan.addEventListener("click", function () {
-        this.classList.toggle("active");
-        filterByTagElements();
-      });
-      tagsContainer.appendChild(tagSpan);
-    });
-
-    tagFiltersContainer.appendChild(tagsContainer);
-    
-    // 添加到顶部工具栏的左侧
-    const toolbarLeft = document.querySelector(".toolbar-left");
-    if (toolbarLeft) {
-      toolbarLeft.appendChild(tagFiltersContainer);
-    }
-  }
-}
-
-/**
- * 使用激活的标签元素进行筛选
- */
-function filterByTagElements() {
-  const selectedTags = [];
-  const activeTagElements = document.querySelectorAll(".filter-tag.active");
-
-  // 如果没有选中任何标签，显示所有节点
-  if (activeTagElements.length === 0) {
-    window.cy.nodes().removeClass("hidden");
-    return;
-  }
-
-  // 收集选中的标签
-  activeTagElements.forEach((tagElement) => {
-    selectedTags.push(tagElement.dataset.tag);
-  });
-
-  // 筛选节点
-  window.cy.nodes().forEach((node) => {
-    const nodeTags = node.data("tags") || [];
-    // 如果节点没有选中的标签之一，隐藏它
-    if (!selectedTags.some((tag) => nodeTags.includes(tag))) {
-      node.addClass("hidden");
-      } else {
-      node.removeClass("hidden");
-    }
-  });
-}
-
-/**
- * 添加标签点击事件处理
- */
-export function setupTagClickHandlers() {
-  document.addEventListener("click", function (event) {
-    // 检查是否点击的是标签
-    const tagElement = event.target.closest(".scholar-tag");
-    if (tagElement && !event.target.closest(".tag-filter-item")) {
-      const tag = tagElement.textContent || tagElement.dataset.tag;
-      highlightNodesByTag(tag);
-    }
-  });
-}
-
-/**
- * 高亮含有特定标签的节点
- * @param {string} tag - 标签
- */
-function highlightNodesByTag(tag) {
-  // 重置当前高亮
-  window.cy.nodes().removeClass("highlighted faded");
-
-  // 找到包含该标签的节点
-  const matchedNodes = window.cy.nodes().filter((node) => {
-    const nodeTags = node.data("tags") || [];
-    return nodeTags.includes(tag);
-  });
-
-  if (matchedNodes.length === 0) {
-    return;
-  }
-
-  // 高亮匹配节点
-  matchedNodes.addClass("highlighted");
-  window.cy.elements().difference(matchedNodes).addClass("faded");
-
-  // 更新视图居中显示匹配节点
-  window.cy.fit(matchedNodes, 50);
-
-  // 显示"返回全局视图"按钮
-  document.getElementById("graph-view-btn").classList.remove("hidden");
-}
-
-/**
- * 更新学者标签显示
- * @param {string} scholarId - 学者ID
- */
-function updateScholarTags(scholarId) {
-  const tagsContainer = document.querySelector("#scholar-tags .scholar-tags");
-  const scholarData = window.scholars[scholarId];
-
-  // 如果是关联学者，显示不可用信息
-  if (scholarData && scholarData.is_secondary) {
-    tagsContainer.textContent = "关联学者不支持标签";
-    document.getElementById("tag-add-btn").style.display = "none"; // 隐藏添加标签按钮
-    return;
-  }
-
-  // 恢复添加标签按钮
-  document.getElementById("tag-add-btn").style.display = "";
-
-  if (!scholarData || !scholarData.tags || scholarData.tags.length === 0) {
-    tagsContainer.textContent = "无标签";
-    return;
-  }
-
-  let tagsHTML = "";
-  for (const tag of scholarData.tags) {
-    // 添加data-tag属性以便应用特定的标签样式
-    tagsHTML += `<span class="scholar-tag" data-tag="${tag}">${tag}</span>`;
-  }
-
-  tagsContainer.innerHTML = tagsHTML;
-}
-
-/**
- * 更新代表性论文列表
- * @param {Object} scholarData - 学者数据
- */
-export function updatePublications(scholarData) {
-  const publicationListEl = document.getElementById("publication-list");
-  
-  // 如果是关联学者或没有论文数据
-  if (scholarData.is_secondary || !scholarData.publications || scholarData.publications.length === 0) {
-    publicationListEl.innerHTML = "<li>暂无论文数据</li>";
-    return;
-  }
-
-  let pubHTML = "";
-  const publications = scholarData.publications
-  
-  publications.forEach(pub => {
-    const title = pub.title || "未知标题";
-    
-    const venue = pub.venue || "";
-    const year = pub.year || "";
-    const citedby = pub.citations || 0; // 使用citations字段
-    
-    // 构建论文HTML
-    pubHTML += `
-      <li class="publication-item">
-        <div class="publication-title">${title}</div>
-        <div class="publication-venue">${venue} ${year}
-          ${citedby > 0 ? `<span class="citation-count"><i class="fas fa-quote-right"></i> ${citedby}</span>
-` : ""}
-        </div>
-      </li>
-    `;
-  });
-  
-  // 更新HTML
-  publicationListEl.innerHTML = pubHTML;
-}
-
-/**
  * 设置筛选面板
  */
 function setupFilterPanel() {
   const filterBtn = document.getElementById('filter-btn');
   const filterPanel = document.getElementById('filter-panel');
+  const filterOverlay = document.getElementById('filter-overlay');
   const closeFilterBtn = document.getElementById('close-filter-panel');
   const applyFiltersBtn = document.getElementById('apply-filters-btn');
   const resetFiltersBtn = document.getElementById('reset-filters-btn');
   const minConnectionsSlider = document.getElementById('min-connections');
   const minConnectionsValue = document.getElementById('min-connections-value');
+  const addFilterBtn = document.getElementById('add-filter-btn');
+  
+  // 移除任何已存在的事件监听器，防止重复绑定
+  if (addFilterBtn) {
+    const newAddFilterBtn = addFilterBtn.cloneNode(true);
+    addFilterBtn.parentNode.replaceChild(newAddFilterBtn, addFilterBtn);
+    
+    // 添加筛选条件按钮
+    newAddFilterBtn.addEventListener('click', function() {
+      addFilterCondition();
+    });
+  }
   
   // 打开筛选面板
   if (filterBtn && filterPanel) {
     filterBtn.addEventListener('click', function() {
-      filterPanel.classList.toggle('visible');
+      filterPanel.classList.add('visible');
+      if (filterOverlay) {
+        filterOverlay.classList.add('visible');
+      }
       // 更新滑块值
       if (minConnectionsValue) {
         minConnectionsValue.textContent = minConnectionsSlider.value;
@@ -957,6 +1106,17 @@ function setupFilterPanel() {
   if (closeFilterBtn && filterPanel) {
     closeFilterBtn.addEventListener('click', function() {
       filterPanel.classList.remove('visible');
+      if (filterOverlay) {
+        filterOverlay.classList.remove('visible');
+      }
+    });
+  }
+  
+  // 点击遮罩层关闭筛选面板
+  if (filterOverlay && filterPanel) {
+    filterOverlay.addEventListener('click', function() {
+      filterPanel.classList.remove('visible');
+      this.classList.remove('visible');
     });
   }
   
@@ -970,15 +1130,26 @@ function setupFilterPanel() {
   // 应用筛选按钮
   if (applyFiltersBtn) {
     applyFiltersBtn.addEventListener('click', function() {
-      applyFilters();
-      // 不关闭筛选面板，让用户可以继续调整筛选条件
+      applyAdvancedFilters();
+      
+      // 关闭筛选面板
+      filterPanel.classList.remove('visible');
+      if (filterOverlay) {
+        filterOverlay.classList.remove('visible');
+      }
     });
   }
   
   // 重置筛选按钮
   if (resetFiltersBtn) {
     resetFiltersBtn.addEventListener('click', function() {
-      resetFilters();
+      resetAdvancedFilters();
+      
+      // 关闭筛选面板
+      filterPanel.classList.remove('visible');
+      if (filterOverlay) {
+        filterOverlay.classList.remove('visible');
+      }
     });
   }
   
@@ -992,7 +1163,450 @@ function setupFilterPanel() {
 }
 
 /**
- * 应用筛选条件
+ * 添加筛选条件
+ */
+function addFilterCondition() {
+  const customFiltersContainer = document.getElementById('custom-filters-container');
+  if (!customFiltersContainer) return;
+  
+  // 创建筛选条件项
+  const filterItem = document.createElement('div');
+  filterItem.className = 'custom-filter-item';
+  
+  // 生成唯一ID
+  const filterId = 'filter-' + Date.now();
+  filterItem.id = filterId;
+  
+  // 添加筛选条件内容
+  filterItem.innerHTML = `
+    <div class="filter-content">
+      <div class="filter-condition-row">
+        <select class="filter-dimension-select" onchange="updateFilterOperators(this)">
+          <option value="">-- 选择筛选维度 --</option>
+          <optgroup label="学者属性">
+            <option value="interestKeyword" data-type="scholar">研究方向</option>
+            <option value="tagFilter" data-type="scholar">学者标签</option>
+            <option value="affiliationKeyword" data-type="scholar">所属机构</option>
+            <option value="minCitations" data-type="scholar">引用次数</option>
+            <option value="minHIndex" data-type="scholar">H指数</option>
+          </optgroup>
+          <optgroup label="论文属性">
+            <option value="venueKeyword" data-type="publication">期刊/会议名</option>
+            <option value="yearFrom" data-type="publication">发表年份起</option>
+            <option value="yearTo" data-type="publication">发表年份止</option>
+            <option value="paperTitleKeyword" data-type="publication">论文标题</option>
+            <option value="minPaperCitations" data-type="publication">论文引用次数</option>
+          </optgroup>
+          <optgroup label="机构属性">
+            <option value="countryKeyword" data-type="institution">所在国家/地区</option>
+            <option value="institutionType" data-type="institution">机构类型</option>
+          </optgroup>
+        </select>
+        
+        <select class="filter-operator-select">
+          <option value="contains">包含</option>
+        </select>
+      </div>
+      
+      <input type="text" class="filter-value-input" placeholder="输入筛选值">
+      
+      <button class="remove-filter-btn" onclick="removeFilterCondition('${filterId}')">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+  `;
+  
+  // 添加到容器
+  customFiltersContainer.appendChild(filterItem);
+}
+
+/**
+ * 移除筛选条件
+ * @param {string} filterId - 筛选条件ID 
+ */
+function removeFilterCondition(filterId) {
+  const filterItem = document.getElementById(filterId);
+  if (filterItem) {
+    filterItem.remove();
+  }
+}
+
+/**
+ * 更新筛选操作符
+ * @param {HTMLElement} dimensionSelect - 维度选择元素 
+ */
+function updateFilterOperators(dimensionSelect) {
+  const filterItem = dimensionSelect.closest('.custom-filter-item');
+  if (!filterItem) return;
+  
+  const operatorSelect = filterItem.querySelector('.filter-operator-select');
+  const valueInput = filterItem.querySelector('.filter-value-input');
+  
+  if (!operatorSelect || !valueInput) return;
+  
+  // 清空现有选项
+  operatorSelect.innerHTML = '';
+  
+  // 根据选择的维度添加适当的操作符
+  const dimension = dimensionSelect.value;
+  const selectedOption = dimensionSelect.options[dimensionSelect.selectedIndex];
+  const filterType = selectedOption.getAttribute('data-type') || '';
+  
+  // 设置筛选类型
+  filterItem.setAttribute('data-filter-type', filterType);
+  
+  // 根据维度类型设置操作符和输入类型
+  if (dimension === 'minCitations' || dimension === 'minHIndex' || dimension === 'minPaperCitations' || 
+      dimension === 'yearFrom' || dimension === 'yearTo') {
+    // 数值比较操作符
+    operatorSelect.innerHTML = `
+      <option value="gt">大于</option>
+      <option value="lt">小于</option>
+      <option value="eq">等于</option>
+    `;
+    valueInput.type = 'number';
+    valueInput.min = '0';
+    
+    // 年份特殊处理
+    if (dimension === 'yearFrom' || dimension === 'yearTo') {
+      valueInput.min = '1900';
+      valueInput.max = '2100';
+      valueInput.placeholder = dimension === 'yearFrom' ? '起始年份' : '结束年份';
+    } else {
+      valueInput.placeholder = '输入数值';
+    }
+  } 
+  else if (dimension === 'tagFilter' || dimension === 'institutionType') {
+    // 标签或机构类型，使用选择框
+    operatorSelect.innerHTML = `
+      <option value="eq">等于</option>
+    `;
+    
+    // 将输入框替换为选择框
+    const selectBox = document.createElement('select');
+    selectBox.className = 'filter-value-input';
+    
+    if (dimension === 'tagFilter') {
+      // 加载标签选项
+      selectBox.innerHTML = `
+        <option value="">-- 选择标签 --</option>
+        <option value="SameField">相同领域</option>
+        <option value="Interested">感兴趣</option>
+        <option value="HighImpact">高影响力</option>
+      `;
+      // 添加用户自定义标签
+      loadTagsForFilter(selectBox);
+    } 
+    else if (dimension === 'institutionType') {
+      // 机构类型选项
+      selectBox.innerHTML = `
+        <option value="">-- 选择机构类型 --</option>
+        <option value="university">大学</option>
+        <option value="research">研究所</option>
+        <option value="industry">企业</option>
+        <option value="government">政府机构</option>
+      `;
+    }
+    
+    // 替换输入框
+    const filterContent = filterItem.querySelector('.filter-content');
+    if (filterContent) {
+      // 找到原输入框并替换
+      const oldInput = valueInput;
+      filterContent.replaceChild(selectBox, oldInput);
+    }
+  }
+  else {
+    // 文本搜索操作符
+    operatorSelect.innerHTML = `
+      <option value="contains">包含</option>
+      <option value="equals">等于</option>
+    `;
+    valueInput.type = 'text';
+    valueInput.placeholder = '输入关键词';
+  }
+}
+
+/**
+ * 加载学者标签到筛选选项中
+ * @param {HTMLSelectElement} selectElement - 可选的标签选择元素
+ */
+function loadTagsForFilter(selectElement = null) {
+  // 如果提供了选择元素，使用它，否则使用默认的选择器
+  const tagSelect = selectElement || document.getElementById('filter-tag');
+  if (!tagSelect) return;
+  
+  // 清除除默认选项外的所有选项
+  const defaultOptions = Array.from(tagSelect.options).filter(option => 
+    option.value === "" || 
+    option.value === "SameField" || 
+    option.value === "Interested" || 
+    option.value === "HighImpact"
+  );
+  
+  tagSelect.innerHTML = '';
+  defaultOptions.forEach(option => tagSelect.appendChild(option));
+  
+  // 收集系统中的所有标签
+  const allTags = new Set();
+  for (const scholarId in window.scholars) {
+    const scholar = window.scholars[scholarId];
+    if (scholar.tags && Array.isArray(scholar.tags)) {
+      scholar.tags.forEach(tag => {
+        // 跳过已有的默认标签
+        if (tag !== "SameField" && tag !== "Interested" && tag !== "HighImpact") {
+          allTags.add(tag);
+        }
+      });
+    }
+  }
+  
+  // 添加标签到选择器
+  allTags.forEach(tag => {
+    const option = document.createElement('option');
+    option.value = tag;
+    option.textContent = tag;
+    tagSelect.appendChild(option);
+  });
+}
+
+/**
+ * 应用高级筛选条件
+ */
+function applyAdvancedFilters() {
+  // 显示加载状态
+  showFilterStatus('正在应用筛选条件...', 'info');
+  
+  // 收集基本筛选条件
+  const minConnections = parseInt(document.getElementById('min-connections').value) || 1;
+  const showPrimary = document.getElementById('show-primary').checked;
+  const showSecondary = document.getElementById('show-secondary').checked;
+  const showCoauthor = document.getElementById('show-coauthor').checked;
+  const showAdvisor = document.getElementById('show-advisor').checked;
+  const showColleague = document.getElementById('show-colleague').checked;
+  
+  // 初始化筛选参数对象
+  const filterParams = {
+    minConnections,
+    showPrimary,
+    showSecondary,
+    showCoauthor,
+    showAdvisor,
+    showColleague
+  };
+  
+  // 收集自定义筛选条件
+  const customFilters = document.querySelectorAll('.custom-filter-item');
+  let hasAdvancedFilters = false;
+  
+  customFilters.forEach(filter => {
+    const dimensionSelect = filter.querySelector('.filter-dimension-select');
+    const operatorSelect = filter.querySelector('.filter-operator-select');
+    const valueInput = filter.querySelector('.filter-value-input');
+    
+    if (!dimensionSelect || !operatorSelect || !valueInput) return;
+    
+    const dimension = dimensionSelect.value;
+    const operator = operatorSelect.value;
+    let value = valueInput.value;
+    
+    // 跳过未设置的筛选条件
+    if (!dimension || !value) return;
+    
+    // 对于数值类型，转换为数字
+    if (dimensionSelect.options[dimensionSelect.selectedIndex].getAttribute('data-type') === 'scholar' &&
+        (dimension === 'minCitations' || dimension === 'minHIndex')) {
+      value = parseInt(value) || 0;
+    }
+    else if (dimensionSelect.options[dimensionSelect.selectedIndex].getAttribute('data-type') === 'publication' &&
+             (dimension === 'yearFrom' || dimension === 'yearTo' || dimension === 'minPaperCitations')) {
+      value = parseInt(value) || 0;
+    }
+    
+    // 根据操作符处理值
+    if (operator === 'contains') {
+      // 适用于文本搜索
+      filterParams[dimension] = value;
+    } 
+    else if (operator === 'gt' && typeof value === 'number') {
+      // 大于
+      filterParams[dimension] = value;
+    }
+    else if (operator === 'lt' && typeof value === 'number') {
+      // 小于 - 需要后端支持
+      filterParams[dimension + 'Lt'] = value;
+    }
+    else if (operator === 'eq') {
+      // 等于
+      filterParams[dimension] = value;
+    }
+    else if (operator === 'startsWith' || operator === 'endsWith') {
+      // 开头/结尾匹配 - 需要后端支持
+      filterParams[dimension + operator.charAt(0).toUpperCase() + operator.slice(1)] = value;
+    }
+    
+    hasAdvancedFilters = true;
+  });
+  
+  if (hasAdvancedFilters) {
+    // 如果有高级筛选条件，通过API进行查询
+    applyAdvancedFilterViaAPI(filterParams);
+  } else {
+    // 如果只有基本筛选条件，使用客户端筛选
+    applyFilters();
+  }
+}
+
+/**
+ * 通过API应用高级筛选条件
+ * @param {Object} filterParams - 筛选参数
+ */
+function applyAdvancedFilterViaAPI(filterParams) {
+  // 检查参数有效性
+  if (!filterParams || typeof filterParams !== 'object' || Array.isArray(filterParams)) {
+    console.error('无效的筛选参数:', filterParams);
+    showFilterStatus('筛选参数无效，使用基本筛选', 'error');
+    applyFilters();
+    return;
+  }
+
+  // 确保必要的基本筛选参数存在
+  if (typeof filterParams.minConnections !== 'number') {
+    filterParams.minConnections = parseInt(document.getElementById('min-connections').value) || 1;
+  }
+  
+  if (typeof filterParams.showPrimary !== 'boolean') {
+    filterParams.showPrimary = document.getElementById('show-primary').checked;
+  }
+  
+  if (typeof filterParams.showSecondary !== 'boolean') {
+    filterParams.showSecondary = document.getElementById('show-secondary').checked;
+  }
+  
+  // 构建查询参数
+  const params = {
+    filter_params: filterParams
+  };
+  
+  console.log('发送筛选请求:', params);
+  
+  // 发送请求到API
+  fetch(`${API_BASE_URL}/scholars/filter`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(params)
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      // 筛选成功，更新图表
+      updateNetworkWithFilteredData(data.data);
+      showFilterStatus(`筛选成功：找到 ${data.data.nodes.length} 个学者节点`, 'success');
+      } else {
+      showFilterStatus(`筛选错误：${data.error || '未知错误'}`, 'error');
+      // 出错时应用基本筛选
+      applyFilters();
+      }
+    })
+    .catch(error => {
+    console.error('应用高级筛选时出错:', error);
+    showFilterStatus('应用筛选时发生错误，使用基本筛选', 'error');
+    // 出错时应用基本筛选
+    applyFilters();
+  });
+}
+
+/**
+ * 使用筛选后的数据更新网络图
+ * @param {Object} networkData - 网络数据（包含nodes和edges）
+ */
+function updateNetworkWithFilteredData(networkData) {
+  if (!window.cy || !networkData || !networkData.nodes) return;
+  
+  try {
+    // 获取当前网络中的所有节点和边的ID集合
+    const allNodeIds = new Set(window.cy.nodes().map(n => n.id()));
+    
+    // 获取筛选结果中的节点ID集合
+    const filteredNodeIds = new Set(networkData.nodes.map(n => n.id));
+    
+    // 隐藏不在筛选结果中的节点
+    window.cy.nodes().forEach(node => {
+      if (filteredNodeIds.has(node.id())) {
+        node.removeClass('filtered');
+        node.style('display', 'element');
+      } else {
+        node.addClass('filtered');
+        node.style('display', 'none');
+      }
+    });
+    
+    // 筛选边 - 显示连接两个可见节点的边
+    window.cy.edges().forEach(edge => {
+      const sourceId = edge.source().id();
+      const targetId = edge.target().id();
+      
+      if (filteredNodeIds.has(sourceId) && filteredNodeIds.has(targetId)) {
+        edge.removeClass('filtered');
+        edge.style('display', 'element');
+      } else {
+        edge.addClass('filtered');
+        edge.style('display', 'none');
+      }
+    });
+    
+    // 添加新节点（如果有）
+    networkData.nodes.forEach(nodeData => {
+      if (!allNodeIds.has(nodeData.id)) {
+        // 添加新节点
+        window.cy.add({
+          group: 'nodes',
+          data: {
+            id: nodeData.id,
+            label: nodeData.label,
+            ...nodeData.data
+          }
+        });
+      }
+    });
+    
+    // 添加新边（如果有）
+    networkData.edges.forEach(edgeData => {
+      const edgeId = `${edgeData.source}-${edgeData.target}`;
+      if (!window.cy.getElementById(edgeId).length) {
+        // 添加新边
+        window.cy.add({
+          group: 'edges',
+          data: {
+            id: edgeId,
+            source: edgeData.source,
+            target: edgeData.target,
+            label: edgeData.label,
+            weight: edgeData.weight
+          }
+        });
+      }
+    });
+    
+    // 重新应用布局
+    import('./graph.js').then(module => {
+      if (typeof module.applyLayout === 'function') {
+        module.applyLayout('fcose');
+      } else {
+        // 如果模块中没有applyLayout函数，使用全局函数
+        window.applyLayout && window.applyLayout('fcose');
+      }
+    });
+    
+  } catch (error) {
+    console.error('更新筛选后的网络图时出错:', error);
+  }
+}
+
+/**
+ * 应用基本筛选条件
  */
 function applyFilters() {
   if (!window.cy) return;
@@ -1010,11 +1624,11 @@ function applyFilters() {
     // 初始状态：显示所有节点
     node.removeClass('filtered');
     
-    // 根据连接数筛选
-    const connections = node.connectedEdges().length;
-    if (connections < minConnections) {
-      node.addClass('filtered');
-    }
+    // 移除基于连接数的筛选逻辑
+    // const connections = node.connectedEdges().length;
+    // if (connections < minConnections) {
+    //   node.addClass('filtered');
+    // }
     
     // 根据节点类型筛选
     const nodeType = node.data('nodeType');
@@ -1053,9 +1667,45 @@ function applyFilters() {
 window.applyFilters = applyFilters;
 
 /**
- * 重置筛选条件
+ * 重置高级筛选条件
  */
-function resetFilters() {
+function resetAdvancedFilters() {
+  // 重置基本筛选
+  resetBasicFilters();
+  
+  // 重置学者筛选
+  document.getElementById('filter-interest').value = '';
+  document.getElementById('filter-tag').value = '';
+  document.getElementById('filter-affiliation').value = '';
+  document.getElementById('filter-min-citations').value = '';
+  document.getElementById('filter-min-hindex').value = '';
+  
+  // 重置论文筛选
+  document.getElementById('filter-venue').value = '';
+  document.getElementById('filter-year-from').value = '';
+  document.getElementById('filter-year-to').value = '';
+  document.getElementById('filter-paper-title').value = '';
+  document.getElementById('filter-paper-citations').value = '';
+  
+  // 重置机构筛选
+  document.getElementById('filter-country').value = '';
+  document.getElementById('filter-institution-type').value = '';
+  document.getElementById('filter-min-scholars').value = '';
+  
+  // 显示状态消息
+  showFilterStatus('已重置所有筛选条件', 'info');
+  
+  // 重置图谱显示 - 显示所有节点和边
+  if (window.cy) {
+    window.cy.elements().removeClass('filtered');
+    window.cy.elements().style('display', 'element');
+  }
+}
+
+/**
+ * 重置基本筛选条件
+ */
+function resetBasicFilters() {
   // 重置连接数筛选
   const minConnectionsSlider = document.getElementById('min-connections');
   const minConnectionsValue = document.getElementById('min-connections-value');
@@ -1079,9 +1729,19 @@ function resetFilters() {
   if (showCoauthor) showCoauthor.checked = true;
   if (showAdvisor) showAdvisor.checked = true;
   if (showColleague) showColleague.checked = true;
+}
+
+/**
+ * 显示筛选状态消息
+ * @param {string} message - 状态消息
+ * @param {string} type - 消息类型 (info, success, error)
+ */
+function showFilterStatus(message, type = 'info') {
+  const statusElement = document.getElementById('filter-status');
+  if (!statusElement) return;
   
-  // 应用重置后的筛选条件
-  applyFilters();
+  statusElement.textContent = message;
+  statusElement.className = 'status-message ' + type;
 }
 
 /**
@@ -1094,11 +1754,20 @@ function updateFilteredGraph() {
       ele.style('display', 'none');
     } else {
       ele.style('display', 'element');
-}
+    }
   });
-  
-  // 重新布局（可选）
-  // applyLayout('fcose');
+
+  // 检查是否所有节点都被过滤掉了
+  const visibleNodes = window.cy.nodes().filter(node => !node.hasClass('filtered'));
+  if (visibleNodes.length === 0) {
+    // 没有可见节点，显示所有节点，并提示用户
+    window.cy.nodes().style('display', 'element');
+    window.cy.edges().style('display', 'element');
+    showFilterStatus('当前筛选条件下没有匹配的节点，已显示所有节点', 'warning');
+    
+    // 重置节点过滤状态，但保留筛选条件设置
+    window.cy.elements().removeClass('filtered');
+  }
 }
 
 /**
@@ -1317,8 +1986,282 @@ function showSearchSuggestions(query, resultsEl) {
   }
 }
 
+// 将函数暴露给全局环境，以便HTML中的onclick调用
+window.removeFilterCondition = removeFilterCondition;
+window.updateFilterOperators = updateFilterOperators;
+
 // 导出函数
 export {
-  setupTagManagement
+  setupTagManagement,
+  setupFilterPanel
 };
+
+/**
+ * 显示状态消息
+ * @param {string} message - 消息内容
+ * @param {string} type - 消息类型 (success, error, warning, info)
+ * @param {number} duration - 消息显示时间，毫秒，默认3000
+ */
+export function showStatusMessage(message, type = 'info', duration = 3000) {
+  // 获取状态元素
+  const statusElement = document.getElementById('data-status');
+  if (!statusElement) return;
+  
+  // 设置样式
+  statusElement.className = 'status-indicator';
+  statusElement.classList.add(`status-${type}`);
+  
+  // 设置文本
+  statusElement.textContent = message;
+  
+  // 显示消息
+  statusElement.style.display = 'block';
+  
+  // 设置自动隐藏
+  setTimeout(() => {
+    statusElement.style.display = 'none';
+  }, duration);
+}
+
+/**
+ * 更新学者数据
+ * @param {Object} scholar - 学者数据
+ */
+function updateScholarData(scholar) {
+  if (!scholar || !scholar.id) return;
+  
+  // 通过API获取最新学者数据
+  getScholarById(scholar.id)
+    .then(latestScholar => {
+      // 更新内存中的学者数据
+      window.scholars[scholar.id] = latestScholar;
+      
+      // 更新详情面板
+      updateDetailPanelUI(latestScholar);
+      
+      // 显示成功消息
+      showStatusMessage("成功更新学者数据", "success");
+    })
+    .catch(error => {
+      console.error("获取学者数据失败:", error);
+      showStatusMessage("获取学者数据失败", "error");
+    });
+}
+
+/**
+ * 加载管理面板数据
+ */
+function loadAdminPanelData() {
+  // 填充学者选择框
+  const sourceSelector = document.getElementById("source-scholar");
+  const targetSelector = document.getElementById("target-scholar");
+  
+  if (!sourceSelector || !targetSelector) return;
+  
+  // 清空选择框
+  sourceSelector.innerHTML = "";
+  targetSelector.innerHTML = "";
+  
+  // 添加选项
+  Object.entries(window.scholars).forEach(([id, scholar]) => {
+    const option = document.createElement("option");
+    option.value = id;
+    option.textContent = scholar.name;
+    
+    // 添加到源选择框
+    sourceSelector.appendChild(option.cloneNode(true));
+    
+    // 添加到目标选择框
+    targetSelector.appendChild(option);
+  });
+}
+
+/**
+ * 设置标签筛选功能
+ */
+export function setupTagFiltering() {
+  // 收集所有标签
+  const allTags = new Set();
+
+  for (const scholarId in window.scholars) {
+    const scholar = window.scholars[scholarId];
+    if (scholar.tags && Array.isArray(scholar.tags)) {
+      scholar.tags.forEach((tag) => allTags.add(tag));
+    }
+  }
+
+  // 创建标签筛选区域
+  if (allTags.size > 0) {
+    const tagFiltersContainer = document.createElement("div");
+    tagFiltersContainer.className = "toolbar-group tag-filters";
+    tagFiltersContainer.innerHTML = "<span class='toolbar-label'>标签:</span>";
+
+    const tagsContainer = document.createElement("div");
+    tagsContainer.className = "filter-tags-container";
+
+    allTags.forEach((tag) => {
+      const tagSpan = document.createElement("span");
+      tagSpan.className = "filter-tag";
+      tagSpan.setAttribute("data-tag", tag);
+      tagSpan.textContent = tag;
+      tagSpan.addEventListener("click", function () {
+        this.classList.toggle("active");
+        filterByTagElements();
+      });
+      tagsContainer.appendChild(tagSpan);
+    });
+
+    tagFiltersContainer.appendChild(tagsContainer);
+    
+    // 添加到顶部工具栏的左侧
+    const toolbarLeft = document.querySelector(".toolbar-left");
+    if (toolbarLeft) {
+      toolbarLeft.appendChild(tagFiltersContainer);
+    }
+  }
+}
+
+/**
+ * 使用激活的标签元素进行筛选
+ */
+function filterByTagElements() {
+  const selectedTags = [];
+  const activeTagElements = document.querySelectorAll(".filter-tag.active");
+
+  // 如果没有选中任何标签，显示所有节点
+  if (activeTagElements.length === 0) {
+    window.cy.nodes().removeClass("hidden");
+    return;
+  }
+
+  // 收集选中的标签
+  activeTagElements.forEach((tagElement) => {
+    selectedTags.push(tagElement.dataset.tag);
+  });
+
+  // 筛选节点
+  window.cy.nodes().forEach((node) => {
+    const nodeTags = node.data("tags") || [];
+    // 如果节点没有选中的标签之一，隐藏它
+    if (!selectedTags.some((tag) => nodeTags.includes(tag))) {
+      node.addClass("hidden");
+    } else {
+      node.removeClass("hidden");
+    }
+  });
+}
+
+/**
+ * 添加标签点击事件处理
+ */
+export function setupTagClickHandlers() {
+  document.addEventListener("click", function (event) {
+    // 检查是否点击的是标签
+    const tagElement = event.target.closest(".scholar-tag");
+    if (tagElement && !event.target.closest(".tag-filter-item")) {
+      const tag = tagElement.textContent || tagElement.dataset.tag;
+      highlightNodesByTag(tag);
+    }
+  });
+}
+
+/**
+ * 高亮含有特定标签的节点
+ * @param {string} tag - 标签
+ */
+function highlightNodesByTag(tag) {
+  // 重置当前高亮
+  window.cy.nodes().removeClass("highlighted faded");
+
+  // 找到包含该标签的节点
+  const matchedNodes = window.cy.nodes().filter((node) => {
+    const nodeTags = node.data("tags") || [];
+    return nodeTags.includes(tag);
+  });
+
+  if (matchedNodes.length === 0) {
+    return;
+  }
+
+  // 高亮匹配节点
+  matchedNodes.addClass("highlighted");
+  window.cy.elements().difference(matchedNodes).addClass("faded");
+
+  // 更新视图居中显示匹配节点
+  window.cy.fit(matchedNodes, 50);
+
+  // 显示"返回全局视图"按钮
+  document.getElementById("graph-view-btn").classList.remove("hidden");
+}
+
+/**
+ * 更新学者标签显示
+ * @param {string} scholarId - 学者ID
+ */
+function updateScholarTags(scholarId) {
+  const tagsContainer = document.querySelector("#scholar-tags .scholar-tags");
+  const scholarData = window.scholars[scholarId];
+
+  // 如果是关联学者，显示不可用信息
+  if (scholarData && scholarData.is_secondary) {
+    tagsContainer.textContent = "关联学者不支持标签";
+    document.getElementById("tag-add-btn").style.display = "none"; // 隐藏添加标签按钮
+    return;
+  }
+
+  // 恢复添加标签按钮
+  document.getElementById("tag-add-btn").style.display = "";
+
+  if (!scholarData || !scholarData.tags || scholarData.tags.length === 0) {
+    tagsContainer.textContent = "无标签";
+    return;
+  }
+
+  let tagsHTML = "";
+  for (const tag of scholarData.tags) {
+    // 添加data-tag属性以便应用特定的标签样式
+    tagsHTML += `<span class="scholar-tag" data-tag="${tag}">${tag}</span>`;
+  }
+
+  tagsContainer.innerHTML = tagsHTML;
+}
+
+/**
+ * 更新代表性论文列表
+ * @param {Object} scholarData - 学者数据
+ */
+export function updatePublications(scholarData) {
+  const publicationListEl = document.getElementById("publication-list");
+  
+  // 如果是关联学者或没有论文数据
+  if (scholarData.is_secondary || !scholarData.publications || scholarData.publications.length === 0) {
+    publicationListEl.innerHTML = "<li>暂无论文数据</li>";
+    return;
+  }
+
+  let pubHTML = "";
+  const publications = scholarData.publications
+  
+  publications.forEach(pub => {
+    const title = pub.title || "未知标题";
+    
+    const venue = pub.venue || "";
+    const year = pub.year || "";
+    const citedby = pub.citedby || pub.citations || 0; // 同时检查citedby和citations字段
+    
+    // 构建论文HTML
+    pubHTML += `
+      <li class="publication-item">
+        <div class="publication-title">${title}</div>
+        <div class="publication-venue">${venue} ${year}
+          ${citedby > 0 ? `<span class="citation-count"><i class="fas fa-quote-right"></i> ${citedby}</span>
+` : ""}
+        </div>
+      </li>
+    `;
+  });
+  
+  // 更新HTML
+  publicationListEl.innerHTML = pubHTML;
+}
  

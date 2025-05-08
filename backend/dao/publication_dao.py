@@ -161,7 +161,7 @@ class PublicationDao:
         FROM publications p
         JOIN authorship a ON p.cites_id = a.cites_id
         WHERE a.scholar_id = ?
-        ORDER BY p.year DESC, p.num_citations DESC
+        ORDER BY p.num_citations DESC, p.year DESC
         LIMIT ? OFFSET ?
         """
         cursor = self.db_manager.execute(query, (scholar_id, limit, offset))

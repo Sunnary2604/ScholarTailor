@@ -31,11 +31,12 @@ class InstitutionDao:
         result = cursor.fetchone()
         return result is not None
     
-    def create_institution(self, name, type=None, url=None, lab=None):
+    def create_institution(self, name, inst_id=None, type=None, url=None, lab=None):
         """创建机构记录
         
         Args:
             name: 机构名称
+            inst_id: 机构ID (可选，如果未提供则自动生成)
             type: 机构类型
             url: 机构网址
             lab: 实验室名称
@@ -48,13 +49,23 @@ class InstitutionDao:
                 self.logger.warning("跳过无名称机构")
                 return False, None
             
-            # 生成机构ID - 使用MD5哈希
-            inst_hash = hashlib.md5(name.encode('utf-8')).hexdigest()[:12]
-            inst_id = f"inst_{inst_hash}"
+            # 如果未提供机构ID，生成一个基于名称的哈希
+            if not inst_id:
+                inst_hash = hashlib.md5(name.encode('utf-8')).hexdigest()[:12]
+                inst_id = f"inst_{inst_hash}"
             
             # 检查机构是否已存在
             if self.institution_exists(inst_id):
-                return True, inst_id  # 已存在，无需创建
+                # 更新机构信息
+                update_query = """
+                UPDATE institutions 
+                SET name = ?, type = ?, url = ?, lab = ?
+                WHERE inst_id = ?
+                """
+                self.db_manager.execute(update_query, (
+                    name, type, url, lab, inst_id
+                ))
+                return True, inst_id
             
             # 插入机构
             query = """
@@ -167,4 +178,104 @@ class InstitutionDao:
         """
         cursor = self.db_manager.execute(query, (search_term, limit))
         institutions = cursor.fetchall()
-        return institutions 
+        return institutions
+    
+    def create_scholar_institution_relation(self, scholar_id, inst_id, start_year=None, end_year=None, is_current=True):
+        """创建学者与机构的关联关系
+        
+        Args:
+            scholar_id: 学者ID
+            inst_id: 机构ID
+            start_year: 开始年份
+            end_year: 结束年份
+            is_current: 是否为当前机构
+            
+        Returns:
+            bool: 是否成功
+        """
+        try:
+            # 检查关系是否已存在
+            check_query = """
+            SELECT 1 FROM scholar_institutions 
+            WHERE scholar_id = ? AND inst_id = ?
+            """
+            cursor = self.db_manager.execute(check_query, (scholar_id, inst_id))
+            if cursor.fetchone():
+                # 如果关系已存在，则更新
+                update_query = """
+                UPDATE scholar_institutions 
+                SET start_year = ?, end_year = ?, is_current = ? 
+                WHERE scholar_id = ? AND inst_id = ?
+                """
+                self.db_manager.execute(update_query, (
+                    start_year, end_year, is_current, scholar_id, inst_id
+                ))
+            else:
+                # 添加新关系
+                insert_query = """
+                INSERT INTO scholar_institutions 
+                (scholar_id, inst_id, start_year, end_year, is_current) 
+                VALUES (?, ?, ?, ?, ?)
+                """
+                self.db_manager.execute(insert_query, (
+                    scholar_id, inst_id, start_year, end_year, is_current
+                ))
+            
+            return True
+            
+        except Exception as e:
+            self.logger.error(f"创建学者-机构关系时出错: {str(e)}")
+            return False
+    
+    def get_scholar_institutions(self, scholar_id):
+        """获取学者所属的机构列表
+        
+        Args:
+            scholar_id: 学者ID
+            
+        Returns:
+            list: 机构列表
+        """
+        try:
+            query = """
+            SELECT i.* 
+            FROM institutions i
+            JOIN scholar_institutions si ON i.inst_id = si.inst_id
+            WHERE si.scholar_id = ?
+            ORDER BY si.is_current DESC, si.end_year DESC
+            """
+            cursor = self.db_manager.execute(query, (scholar_id,))
+            institutions = cursor.fetchall()
+            return institutions
+            
+        except Exception as e:
+            self.logger.error(f"获取学者机构时出错: {str(e)}")
+            return []
+    
+    def get_institution_scholars(self, inst_id, limit=50):
+        """获取机构所有学者
+        
+        Args:
+            inst_id: 机构ID
+            limit: 结果数量限制
+            
+        Returns:
+            list: 学者列表
+        """
+        try:
+            query = """
+            SELECT s.*, e.name 
+            FROM scholars s
+            JOIN entities e ON s.scholar_id = e.id
+            JOIN scholar_institutions si ON s.scholar_id = si.scholar_id
+            WHERE si.inst_id = ?
+            ORDER BY s.citedby DESC
+            LIMIT ?
+            """
+            cursor = self.db_manager.execute(query, (inst_id, limit))
+            scholars = cursor.fetchall()
+            return scholars
+            
+        except Exception as e:
+            self.logger.error(f"获取机构学者时出错: {str(e)}")
+            return [] 

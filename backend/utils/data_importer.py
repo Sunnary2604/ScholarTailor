@@ -276,14 +276,14 @@ class ScholarImporter:
             self.relationship_dao.create_relationship(
                 source_id=scholar_id,
                 target_id=coauthor_id,
-                relation_type='collaborates_with',
+                relation_type='coauthor',
                 weight=weight
             )
             
             self.relationship_dao.create_relationship(
                 source_id=coauthor_id,
                 target_id=scholar_id,
-                relation_type='collaborates_with',
+                relation_type='coauthor',
                 weight=weight
             )
             

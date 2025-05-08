@@ -15,6 +15,8 @@ from services.relationship_service import RelationshipService
 from services.interest_service import InterestService
 from services.data_service import DataService
 from utils.response_handler import ResponseHandler
+import logging
+import json
 
 # 获取项目根目录
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -45,7 +47,8 @@ relationship_service = RelationshipService(custom_relationships_file=CUSTOM_RELA
 interest_service = InterestService(scholars_dir=SCHOLARS_DIR, custom_data_file=CUSTOM_DATA_FILE)
 data_service = DataService(
     scholars_dir=SCHOLARS_DIR,
-    db_path=DB_PATH
+    db_path=DB_PATH,
+    output_file=OUTPUT_FILE
 )
 
 # 静态文件服务
@@ -54,71 +57,200 @@ data_service = DataService(
 def serve_static(path):
     return send_from_directory(app.static_folder, path)
 
-# 提供data.json数据文件
-@app.route('/data.json')
-def serve_data():
-    # 检查文件是否存在
-    if os.path.exists(OUTPUT_FILE):
-        # 如果存在，直接提供文件
-        return send_from_directory(ROOT_DIR, 'data.json')
-    else:
-        # 如果不存在，从数据库获取数据并返回
-        result = data_service.get_network_data()
-        if result['success'] and 'data' in result:
-            return jsonify(result['data'])
-        else:
-            # 出错时返回空数据结构
-            return jsonify({'nodes': [], 'edges': []})
 
 # API端点：添加单个学者
 @app.route('/api/scholars/add', methods=['POST'])
 def add_scholar():
-    data = request.json
-    if not data:
-        return resp.error('缺少请求数据', 400)
+    """添加学者API，优先使用ID而非名称
     
-    # 根据提供的数据类型调用不同的服务方法
-    if 'scholar_id' in data:
-        result = scholar_service.add_scholar_by_id(data['scholar_id'])
-    elif 'name' in data:
-        result = scholar_service.add_scholar_by_name(data['name'])
-    else:
-        return resp.error('缺少学者姓名或ID', 400)
+    接收JSON参数:
+    {
+        "scholar_id": "学者ID", (优先)
+        "name": "学者名称" (仅在没有ID时使用)
+    }
     
-    # 处理响应
-    if result['success']:
-        # 重新生成数据
-        data_service.regenerate_network_data()
-    
-    return resp.from_result(result, resp.COMMON_ERROR_MAPPING)
+    返回:
+    {
+        "success": true/false,
+        "scholar_id": "添加的学者ID",
+        "message": "成功/错误信息"
+    }
+    """
+    try:
+        data = request.json
+        if not data:
+            return jsonify({
+                'success': False,
+                'error': '缺少请求数据'
+            })
+        
+        # 优先使用ID添加学者，这样可以避免重名问题
+        if 'scholar_id' in data and data['scholar_id'].strip():
+            # 提取scholar_id (处理可能的URL形式)
+            scholar_id = data['scholar_id'].strip()
+            # 如果是完整URL，尝试提取ID部分
+            if 'user=' in scholar_id:
+                import re
+                match = re.search(r'user=([^&]+)', scholar_id)
+                if match:
+                    scholar_id = match.group(1)
+            
+            result = scholar_service.add_scholar_by_id(scholar_id)
+        elif 'name' in data and data['name'].strip():
+            # 只有在没有提供ID时才使用名称
+            app.logger.warning(f"使用名称添加学者，可能存在重名风险: {data['name']}")
+            result = scholar_service.add_scholar_by_name(data['name'].strip())
+        else:
+            return jsonify({
+                'success': False,
+                'error': '缺少学者ID或名称'
+            })
+        
+        # 处理响应
+        if result['success']:
+            # 重新生成数据
+            try:
+                data_service.regenerate_network_data()
+            except Exception as regen_error:
+                app.logger.warning(f"重新生成网络数据时出错: {str(regen_error)}")
+        
+        return jsonify(result)
+    except Exception as e:
+        app.logger.error(f"添加学者时出错: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        })
 
 # API端点：批量添加学者
 @app.route('/api/scholars/batch-add', methods=['POST'])
 def batch_add_scholars():
-    data = request.json
-    if not data or 'names' not in data or not isinstance(data['names'], list):
-        return resp.error('缺少学者姓名列表', 400)
+    """批量添加学者API，支持ID列表或名称列表
     
-    result = scholar_service.batch_add_scholars(data['names'])
+    接收JSON参数:
+    {
+        "scholar_ids": ["ID1", "ID2", ...], (优先)
+        "names": ["名称1", "名称2", ...] (仅在没有提供ID列表时使用)
+    }
     
-    if result['success']:
-        data_service.regenerate_network_data()
-    
-    return resp.from_result(result, resp.COMMON_ERROR_MAPPING)
+    返回:
+    {
+        "success": true/false,
+        "added": 添加成功的数量,
+        "message": "成功/错误信息"
+    }
+    """
+    try:
+        data = request.json
+        if not data:
+            return jsonify({
+                'success': False,
+                'error': '缺少请求数据'
+            })
+        
+        # 优先使用ID列表添加学者
+        if 'scholar_ids' in data and isinstance(data['scholar_ids'], list) and data['scholar_ids']:
+            # 逐个添加ID
+            results = []
+            added_count = 0
+            for scholar_id in data['scholar_ids']:
+                if not scholar_id:
+                    continue
+                
+                # 清理并检查ID
+                clean_id = scholar_id.strip() if isinstance(scholar_id, str) else str(scholar_id)
+                if 'user=' in clean_id:
+                    import re
+                    match = re.search(r'user=([^&]+)', clean_id)
+                    if match:
+                        clean_id = match.group(1)
+                
+                result = scholar_service.add_scholar_by_id(clean_id)
+                results.append(result)
+                if result['success']:
+                    added_count += 1
+            
+            final_result = {
+                'success': added_count > 0,
+                'added': added_count,
+                'message': f'成功添加 {added_count} 位学者'
+            }
+        elif 'names' in data and isinstance(data['names'], list) and data['names']:
+            # 如果没有提供ID列表，使用名称列表
+            app.logger.warning(f"使用名称列表批量添加学者，可能存在重名风险")
+            
+            # 过滤空名称
+            valid_names = [name.strip() for name in data['names'] if name and isinstance(name, str)]
+            result = scholar_service.batch_add_scholars(valid_names)
+            final_result = result
+        else:
+            return jsonify({
+                'success': False,
+                'error': '缺少学者ID列表或名称列表'
+            })
+        
+        # 如果添加成功，重新生成网络数据
+        if final_result['success']:
+            try:
+                data_service.regenerate_network_data()
+            except Exception as regen_error:
+                app.logger.warning(f"重新生成网络数据时出错: {str(regen_error)}")
+        
+        return jsonify(final_result)
+    except Exception as e:
+        app.logger.error(f"批量添加学者时出错: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        })
 
 # API端点：更新单个学者
 @app.route('/api/scholars/update', methods=['POST'])
 def update_scholar():
-    data = request.json
-    if not data or 'id' not in data:
-        return resp.error('缺少学者ID', 400)
+    """更新学者信息API
+    将关联学者更新为主要学者并获取最新数据
     
-    result = scholar_service.update_scholar(data['id'])
+    接收JSON参数:
+    {
+        "id": "学者ID"
+    }
     
-    if result['success']:
-        data_service.regenerate_network_data()
-    
-    return resp.from_result(result, resp.COMMON_ERROR_MAPPING)
+    返回:
+    {
+        "success": true/false,
+        "message": "成功/错误信息"
+    }
+    """
+    try:
+        data = request.json
+        
+        # 验证参数
+        if not data or 'id' not in data:
+            return jsonify({
+                'success': False, 
+                'error': '缺少必要参数'
+            })
+        
+        # 更新学者信息
+        scholar_id = data.get('id')
+        result = scholar_service.update_scholar(scholar_id)
+        
+        # 如果更新成功，重新生成网络数据
+        if result['success']:
+            try:
+                data_service.regenerate_network_data()
+            except Exception as regen_error:
+                logging.warning(f"重新生成网络数据时出错: {str(regen_error)}")
+                # 不中断流程，继续返回成功结果
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        logging.error(f"更新学者信息时出错: {str(e)}")
+        return jsonify({
+            'success': False, 
+            'error': str(e)
+        })
 
 # API端点：更新学者自定义字段
 @app.route('/api/scholars/update-custom-fields', methods=['POST'])
@@ -200,6 +332,17 @@ def initialize_database():
     result = data_service.initialize_database()
     return resp.from_result(result, resp.COMMON_ERROR_MAPPING)
 
+# API端点：清空数据库并重新导入数据
+@app.route('/api/migrate-data', methods=['POST'])
+def migrate_data():
+    data = request.json
+    data_dir = data.get('data_dir') if data else None
+    
+    # 调用数据服务导入数据
+    result = data_service.import_data(data_dir)
+    
+    return resp.from_result(result, resp.COMMON_ERROR_MAPPING)
+
 # API端点：将关联学者转换为主要学者
 @app.route('/api/scholars/convert-to-main', methods=['POST'])
 def convert_to_main_scholar():
@@ -229,6 +372,46 @@ def get_network_data():
     result = data_service.get_network_data()
     return resp.from_result(result, resp.COMMON_ERROR_MAPPING)
 
+# API端点：高级筛选查询
+@app.route('/api/scholars/filter', methods=['POST'])
+def filter_scholars():
+    data = request.json
+    if not data or 'filter_params' not in data:
+        return resp.error('缺少筛选参数', 400)
+    
+    try:
+        filter_params = data['filter_params']
+        
+        # 增强记录筛选参数的详细信息
+        app.logger.info(f"接收到筛选请求，参数类型: {type(filter_params)}")
+        app.logger.info(f"筛选参数详情: {filter_params}")
+        
+        # 验证筛选参数
+        if not isinstance(filter_params, dict):
+            app.logger.error(f"筛选参数不是字典类型: {type(filter_params)}")
+            return resp.error('筛选参数必须是对象', 400)
+        
+        # 记录筛选参数的键
+        app.logger.info(f"筛选参数键: {list(filter_params.keys())}")
+        
+        # 执行筛选
+        result = data_service.filter_network_data(filter_params)
+        
+        # 记录结果
+        if result['success']:
+            node_count = len(result.get('data', {}).get('nodes', []))
+            edge_count = len(result.get('data', {}).get('edges', []))
+            app.logger.info(f"筛选成功，返回 {node_count} 个节点，{edge_count} 条边")
+        else:
+            app.logger.error(f"筛选失败: {result.get('error', '未知错误')}")
+        
+        return resp.from_result(result, resp.COMMON_ERROR_MAPPING)
+    
+    except Exception as e:
+        error_msg = f"执行筛选时出错: {str(e)}"
+        app.logger.error(error_msg)
+        return resp.error(error_msg, 500)
+
 # 全局错误处理
 @app.errorhandler(404)
 def not_found(error):
@@ -244,10 +427,40 @@ def server_error(error):
 
 # 启动服务器
 if __name__ == '__main__':
-    # 初始化数据库（如果需要）
-    db_init_result = data_service.initialize_database()
-    if not db_init_result['success']:
-        print(f"警告: 数据库初始化失败: {db_init_result.get('error', '未知错误')}")
+    # 检查数据库是否需要初始化 - 仅在数据库文件不存在时初始化
+    if not os.path.exists(DB_PATH):
+        print("数据库文件不存在，正在初始化数据库表结构...")
+        init_success = data_service.initialize_database()
+        if not init_success['success']:
+            print("警告: 数据库表结构初始化失败")
+        else:
+            print("数据库表结构初始化成功")
+            
+            # 导入初始数据
+            if os.path.exists(SCHOLARS_DIR) and any(os.listdir(SCHOLARS_DIR)):
+                print("正在导入初始数据...")
+                # 获取目录下的所有文件
+                scholar_files = [f for f in os.listdir(SCHOLARS_DIR) if f.endswith('.json')]
+                for file in scholar_files:
+                    try:
+                        with open(os.path.join(SCHOLARS_DIR, file), 'r', encoding='utf-8') as f:
+                            scholar_data = json.load(f)
+                            scholar_id = scholar_data.get('scholar_id')
+                            if scholar_id:
+                                # 使用scholar_service导入学者数据
+                                result = scholar_service._import_scholar_complete(scholar_id, scholar_data)
+                                if result['success']:
+                                    print(f"成功导入学者文件: {file}")
+                                else:
+                                    print(f"导入学者文件失败: {file}, 错误: {result.get('error')}")
+                    except Exception as e:
+                        print(f"处理学者文件出错: {file}, 错误: {str(e)}")
+                
+                # 导入完成后重新生成网络数据
+                data_service.regenerate_network_data()
+    else:
+        print(f"数据库文件已存在: {DB_PATH}")
     
     # 启动Flask服务器
+    print("正在启动API服务器...")
     app.run(debug=True, host='127.0.0.1', port=8080) 

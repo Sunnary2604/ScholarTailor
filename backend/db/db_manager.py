@@ -37,13 +37,24 @@ class DBManager:
         self.connect()
     
     def connect(self):
-        """连接到数据库"""
+        """连接到数据库并检查表结构"""
         if self.connection is None:
+            # 检查数据库文件是否存在
+            db_exists = os.path.exists(self.db_path)
+            
+            # 连接到数据库
             self.connection = sqlite3.connect(self.db_path, check_same_thread=False)
             # 启用外键约束
             self.connection.execute("PRAGMA foreign_keys = ON")
             # 设置行工厂，使查询结果以字典形式返回
             self.connection.row_factory = self._dict_factory
+            
+            # 如果数据库文件不存在或表结构不完整，初始化表结构
+            if not db_exists or not self.check_tables_exist():
+                print(f"{'新建数据库' if not db_exists else '表结构不完整'}, 正在初始化表结构...")
+                from db.models import init_db
+                init_db(self)
+                print("数据库表结构初始化完成")
     
     def _dict_factory(self, cursor, row):
         """将查询结果转换为字典"""
@@ -104,4 +115,22 @@ class DBManager:
     def rollback(self):
         """回滚事务"""
         if self.connection:
-            self.connection.rollback() 
+            self.connection.rollback()
+    
+    def check_tables_exist(self):
+        """检查必要的表是否存在"""
+        required_tables = [
+            'scholars', 'publications', 'institutions', 'entities', 
+            'relationships', 'interests', 'authorship', 'db_version'
+        ]
+        
+        cursor = self.get_cursor()
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
+        existing_tables = [row.get('name') for row in cursor.fetchall()]
+        
+        for table in required_tables:
+            if table not in existing_tables:
+                print(f"表结构不完整: {table} 表不存在")
+                return False
+        
+        return True 

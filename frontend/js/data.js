@@ -45,11 +45,17 @@ export function cacheScholars(data) {
       node.data.is_secondary = false;
       // 确保nodeType属性存在
       node.data.nodeType = "primary";
+      
+      // 统一字段名，确保有citations字段
+      if (node.data.citedby !== undefined && node.data.citations === undefined) {
+        node.data.citations = node.data.citedby;
+      }
+      
       window.scholars[node.id] = node.data;
     }
   }
 
-  // 再处理次要学者(secondary)，只添加不存在的学者
+  // 再处理关联学者(secondary)，只添加不存在的学者
   for (const node of data.nodes) {
     // 检查节点类型，同时考虑原始group属性和data.group
     const isSecondary = node.group === "secondary";
@@ -64,6 +70,12 @@ export function cacheScholars(data) {
       node.data.is_secondary = true;
       // 确保nodeType属性存在
       node.data.nodeType = "secondary";
+      
+      // 统一字段名，确保有citations字段
+      if (node.data.citedby !== undefined && node.data.citations === undefined) {
+        node.data.citations = node.data.citedby;
+      }
+      
       window.scholars[node.id] = node.data;
     }
   }
@@ -84,7 +96,14 @@ export function cacheScholars(data) {
  */
 export async function loadData() {
   try {
-    return await fetchScholarData();
+    const data = await fetchScholarData();
+    // 添加详细的数据日志
+    console.log('=== loadData 函数接收到的数据 ===');
+    console.log('节点总数:', data.nodes ? data.nodes.length : 0);
+    console.log('主要节点数:', data.nodes ? data.nodes.filter(n => n.group === 'primary').length : 0);
+    console.log('次要节点数:', data.nodes ? data.nodes.filter(n => n.group === 'secondary').length : 0);
+    console.log('边总数:', data.edges ? data.edges.length : 0);
+    return data;
   } catch (error) {
     console.error("加载数据失败:", error);
     throw error;
@@ -175,7 +194,11 @@ export async function reloadData() {
 
     // 检查孤立节点开关状态
     const isolatedToggle = document.getElementById("toggle-isolated");
-    const shouldShowIsolatedNodes = isolatedToggle ? isolatedToggle.checked : false;
+    // 修改为默认显示孤立节点，除非用户明确要求不显示
+    const shouldShowIsolatedNodes = isolatedToggle ? isolatedToggle.checked : true;
+    
+    // 记录日志
+    console.log(`是否显示孤立节点: ${shouldShowIsolatedNodes}`);
     
     // 重建图谱，根据孤立节点开关状态决定是否预筛选孤立节点
     window.cy.elements().remove();
@@ -281,6 +304,9 @@ export function getGraphElements(data, preFilter = true) {
   if (!data) return [];
   
   console.time('生成图谱元素');
+  console.log('=== getGraphElements 函数开始处理数据 ===');
+  console.log('接收的数据节点总数:', data.nodes ? data.nodes.length : 0);
+  console.log('接收的数据边总数:', data.edges ? data.edges.length : 0);
   
   // 预先计算节点连接数量，用于后续处理和预筛选
   const nodeConnections = {};
@@ -293,6 +319,24 @@ export function getGraphElements(data, preFilter = true) {
     }
   }
   
+  // 输出每个节点的连接数
+  console.log('节点连接数详情:');
+  Object.entries(nodeConnections).forEach(([nodeId, count]) => {
+    const nodeType = data.nodes.find(n => n.id === nodeId)?.group || '未知';
+    console.log(`节点 ${nodeId}: 类型=${nodeType}, 连接数=${count}`);
+  });
+  
+  // 检查节点总数，如果少于20个，不进行预筛选
+  const shouldPreFilter = preFilter && data.nodes && data.nodes.length >= 20;
+  
+  console.log(`总节点数: ${data.nodes ? data.nodes.length : 0}, 是否进行预筛选: ${shouldPreFilter}`);
+  
+  // 跟踪筛选结果
+  let includeCount = 0;
+  let excludeCount = 0;
+  let secondaryIncluded = 0;
+  let secondaryExcluded = 0;
+  
   // 第一步：创建全部元素
   const elements = [];
   const maxBatchSize = 1000; // 元素批处理最大数量
@@ -303,14 +347,15 @@ export function getGraphElements(data, preFilter = true) {
     let currentBatch = [];
     
     for (const node of data.nodes) {
-      // 如果需要预筛选，检查该节点是否要保留
-      if (preFilter) {
+      // 完全移除基于连接数的筛选逻辑，让所有节点都能显示
+      // 改为只记录日志，不进行筛选
+      if (shouldPreFilter) {
         const isSecondary = node.group === "secondary";
         const connections = nodeConnections[node.id] || 0;
         
-        // 如果是次要节点且只有一个连接，则跳过
-        if (isSecondary && connections <= 1) {
-          continue;
+        // 只记录低连接次要节点，不筛选
+        if (isSecondary && connections < 1) {
+          console.log(`次要节点 ${node.id} 只有 ${connections} 个连接，但仍会显示`);
         }
       }
       
@@ -326,6 +371,11 @@ export function getGraphElements(data, preFilter = true) {
         },
         group: 'nodes'
       });
+      
+      includeCount++;
+      if (node.group === "secondary") {
+        secondaryIncluded++;
+      }
       
       // 达到批处理数量时，添加到最终元素列表
       if (currentBatch.length >= maxBatchSize) {
@@ -345,6 +395,11 @@ export function getGraphElements(data, preFilter = true) {
     });
   }
   
+  // 记录节点筛选结果
+  console.log('节点筛选结果:');
+  console.log(`包含节点: ${includeCount}, 排除节点: ${excludeCount}`);
+  console.log(`包含次要节点: ${secondaryIncluded}, 排除次要节点: ${secondaryExcluded}`);
+  
   // 批量处理边 - 新增边重复检测
   if (data.edges) {
     const edgeBatches = [];
@@ -353,9 +408,12 @@ export function getGraphElements(data, preFilter = true) {
     // 创建一个集合来跟踪已处理的边连接
     const processedEdges = new Set();
     
+    let includedEdges = 0;
+    let excludedEdges = 0;
+    
     for (const edge of data.edges) {
-      // 如果需要预筛选，检查边的源节点和目标节点是否都保留
-      if (preFilter) {
+      // 移除基于连接数的筛选逻辑，只记录日志
+      if (shouldPreFilter) {
         const sourceNodeConnection = nodeConnections[edge.source] || 0;
         const targetNodeConnection = nodeConnections[edge.target] || 0;
         
@@ -363,10 +421,10 @@ export function getGraphElements(data, preFilter = true) {
         const sourceIsSecondary = data.nodes.find(n => n.id === edge.source)?.group === "secondary";
         const targetIsSecondary = data.nodes.find(n => n.id === edge.target)?.group === "secondary";
         
-        // 如果边的一端是次要节点且只有一个连接，则跳过
-        if ((sourceIsSecondary && sourceNodeConnection <= 1) || 
-            (targetIsSecondary && targetNodeConnection <= 1)) {
-          continue;
+        // 只记录低连接次要节点的边，不进行筛选
+        if ((sourceIsSecondary && sourceNodeConnection < 1) || 
+            (targetIsSecondary && targetNodeConnection < 1)) {
+          console.log(`边 ${edge.source}-${edge.target} 连接了低连接的次要节点，但仍会显示`);
         }
       }
       
@@ -376,11 +434,14 @@ export function getGraphElements(data, preFilter = true) {
       
       // 检查这条边是否已经处理过
       if (processedEdges.has(nodesPair)) {
+        console.log(`跳过重复边 ${nodesPair}`);
+        excludedEdges++;
         continue; // 跳过已处理的边
       }
       
       // 将这条边标记为已处理
       processedEdges.add(nodesPair);
+      includedEdges++;
       
       // 确定边的方向
       // 可以根据需要修改这个逻辑，例如根据节点类型或连接数决定方向
@@ -425,10 +486,14 @@ export function getGraphElements(data, preFilter = true) {
     edgeBatches.forEach(batch => {
       elements.push(...batch);
     });
+    
+    // 记录边筛选结果
+    console.log('边筛选结果:');
+    console.log(`包含边: ${includedEdges}, 排除边: ${excludedEdges}`);
   }
   
   console.timeEnd('生成图谱元素');
-  console.log(`生成了 ${elements.filter(el => el.group !== 'edges').length} 个节点和 ${elements.filter(el => el.group === 'edges').length} 条边`);
+  console.log(`最终生成了 ${elements.filter(el => el.group !== 'edges').length} 个节点和 ${elements.filter(el => el.group === 'edges').length} 条边`);
   
   return elements;
 }

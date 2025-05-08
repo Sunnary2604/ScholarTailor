@@ -5,8 +5,19 @@
 
 import { getFCoseLayoutOptions } from './graph.js';
 import { initGraph, resetGraphViewport } from './graph.js';
-import { setupAdminPanel, setupTagFiltering, setupTagClickHandlers, setupSearch } from './ui.js';
+import {
+  updateDetailPanel,
+  clearDetailPanel,
+  setupAdminPanel,
+  showStatusMessage,
+  setupTagFiltering,
+  setupTagClickHandlers,
+  setupSearch,
+  setupAddScholarPanel,
+  setupFilterPanel
+} from "./ui.js";
 import { loadData, cacheScholars, reloadData } from './data.js';
+import { API_BASE_URL } from './api.js';
 
 // 全局变量，添加到window对象上以便于全局访问
 // 初始化为null或空值，避免未定义错误
@@ -61,9 +72,34 @@ export async function init() {
       
       // 设置UI组件
       setupAdminPanel();
+      setupAddScholarPanel();
+      setupFilterPanel();
+      setupSearch();
       setupTagFiltering();
       setupTagClickHandlers();
-      setupSearch();
+      
+      // 页面加载完成后应用默认筛选条件，但考虑节点数量
+      setTimeout(() => {
+        if (window.cy) {
+          const totalNodes = window.cy.nodes().length;
+          // 如果节点数量少于20，设置最小连接数为1，否则保持原设置
+          if (totalNodes < 20) {
+            const minConnectionsSlider = document.getElementById('min-connections');
+            const minConnectionsValue = document.getElementById('min-connections-value');
+            if (minConnectionsSlider) {
+              minConnectionsSlider.value = '1';
+              if (minConnectionsValue) {
+                minConnectionsValue.textContent = '1';
+              }
+            }
+          }
+          // 应用筛选
+          if (typeof window.applyFilters === 'function') {
+            window.applyFilters();
+          }
+        }
+      }, 1000);
+      
     } catch (dataError) {
       console.error('加载或处理数据时出错:', dataError);
       if (statusElement) {
@@ -119,8 +155,12 @@ export async function init() {
     if (filterBtn) {
       filterBtn.addEventListener('click', function() {
         const filterPanel = document.getElementById('filter-panel');
+        const filterOverlay = document.getElementById('filter-overlay');
         if (filterPanel) {
           filterPanel.classList.add('visible');
+        }
+        if (filterOverlay) {
+          filterOverlay.classList.add('visible');
         }
       });
     }
@@ -130,9 +170,25 @@ export async function init() {
     if (closeFilterPanel) {
       closeFilterPanel.addEventListener('click', function() {
         const filterPanel = document.getElementById('filter-panel');
+        const filterOverlay = document.getElementById('filter-overlay');
         if (filterPanel) {
           filterPanel.classList.remove('visible');
         }
+        if (filterOverlay) {
+          filterOverlay.classList.remove('visible');
+        }
+      });
+    }
+    
+    // 点击遮罩层关闭筛选面板
+    const filterOverlay = document.getElementById('filter-overlay');
+    if (filterOverlay) {
+      filterOverlay.addEventListener('click', function() {
+        const filterPanel = document.getElementById('filter-panel');
+        if (filterPanel) {
+          filterPanel.classList.remove('visible');
+        }
+        this.classList.remove('visible');
       });
     }
     
