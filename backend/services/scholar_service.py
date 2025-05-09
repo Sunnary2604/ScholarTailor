@@ -71,8 +71,8 @@ class ScholarService:
                 return {
                     'success': True,
                     'scholar_id': scholar_id,
-                            'message': f'成功添加学者 {scholar_data.get("name", "Unknown")}'
-                        }
+                                        'message': f'成功添加学者 {scholar_data.get("name", "Unknown")}'
+                                    }
             else:
                 return {
                     'success': False,
@@ -126,8 +126,8 @@ class ScholarService:
                 return {
                     'success': True,
                     'scholar_id': scholar_id,
-                            'message': f'成功添加学者 {scholar_data.get("name", name)}'
-                        }
+                                        'message': f'成功添加学者 {scholar_data.get("name", name)}'
+                                    }
             else:
                 return {
                     'success': False,
@@ -448,19 +448,19 @@ class ScholarService:
             # 优先使用ID直接获取学者数据
             updated_data = self.crawler.search_author_by_id(scholar_id)
             
-            # 获取学者名称，以备ID查询失败时使用
+            # 如果使用ID获取失败，则尝试使用名称
+            # 先获取scholar_name，确保变量在任何条件分支中都可用
             scholar_name = entity.get('name', '')
             
-            # 如果使用ID获取失败，则尝试使用名称
-            if not updated_data:
-                if not scholar_name:
-                    return {
-                        'success': False,
-                        'error': '无法确定学者名称'
-                    }
-                
+    
+            if not scholar_name:
+                return {
+                    'success': False,
+                    'error': '无法确定学者名称'
+                }
+            
                 self.logger.info(f"使用ID {scholar_id} 获取学者数据失败，尝试使用名称 '{scholar_name}' 获取")
-                updated_data = self.crawler.search_author(scholar_name)
+            updated_data = self.crawler.search_author(scholar_name)
             
             if not updated_data:
                 return {
@@ -474,8 +474,8 @@ class ScholarService:
             if result['success']:
                 return {
                     'success': True,
-                            'message': f'成功更新学者数据 (ID: {scholar_id})'
-                        }
+                        'message': f'成功更新学者数据 (ID: {scholar_id})'
+                    }
             else:
                 return {
                     'success': False,

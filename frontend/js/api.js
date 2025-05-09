@@ -126,6 +126,8 @@ export async function updateScholar(scholarId, data) {
     // 确保data中包含学者ID
     const requestData = { ...data, id: scholarId };
     
+    console.log('更新学者数据:', requestData);
+    
     const response = await fetch(`${API_BASE_URL}/scholars/update`, {
       method: 'POST',
       headers: {
@@ -133,10 +135,15 @@ export async function updateScholar(scholarId, data) {
       },
       body: JSON.stringify(requestData),
     });
+    
     if (!response.ok) {
       throw new Error(`HTTP错误: ${response.status}`);
     }
-    return await response.json();
+    
+    const result = await response.json();
+    console.log('更新学者数据响应:', result);
+    
+    return result;
   } catch (error) {
     console.error('更新学者数据失败:', error);
     throw error;
@@ -257,8 +264,42 @@ export async function migrateData(dataDir = null) {
   }
 }
 
+/**
+ * 更新学者标签
+ * @param {string} scholarId - 学者ID
+ * @param {Array} tags - 标签列表
+ * @returns {Promise<Object>} 更新结果
+ */
+export async function updateScholarTags(scholarId, tags) {
+  try {
+    console.log('更新学者标签:', scholarId, tags);
+    
+    const response = await fetch(`${API_BASE_URL}/scholars/update-tags`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        id: scholarId,
+        tags: tags
+      }),
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP错误: ${response.status}`);
+    }
+    
+    const result = await response.json();
+    console.log('更新学者标签响应:', result);
+    
+    return result;
+  } catch (error) {
+    console.error('更新学者标签失败:', error);
+    throw error;
+  }
+}
+
 // 导出所有API函数
 export {
-  
   API_BASE_URL
 };

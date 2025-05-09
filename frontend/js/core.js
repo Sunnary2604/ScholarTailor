@@ -66,18 +66,18 @@ export async function init() {
       
       // 初始化学者数据缓存
       cacheScholars(data);
-      
-      // 初始化图谱
+
+    // 初始化图谱
       initGraph('cy', data);
-      
+
       // 设置UI组件
       setupAdminPanel();
       setupAddScholarPanel();
       setupFilterPanel();
       setupSearch();
       setupTagFiltering();
-      setupTagClickHandlers();
-      
+    setupTagClickHandlers();
+    
       // 页面加载完成后应用默认筛选条件，但考虑节点数量
       setTimeout(() => {
         if (window.cy) {
@@ -90,7 +90,7 @@ export async function init() {
               minConnectionsSlider.value = '1';
               if (minConnectionsValue) {
                 minConnectionsValue.textContent = '1';
-              }
+    }
             }
           }
           // 应用筛选
@@ -105,10 +105,10 @@ export async function init() {
       if (statusElement) {
         statusElement.textContent = '加载数据失败，请检查网络连接';
         statusElement.style.display = 'block';
-      }
+  }
       throw dataError;
-    }
-    
+}
+
     // 添加重新加载数据按钮
     const reloadBtn = document.getElementById('reload-data-btn');
     if (reloadBtn) {
@@ -121,8 +121,8 @@ export async function init() {
         this.disabled = false;
         this.innerHTML = '<i class="fas fa-sync-alt"></i> 刷新数据';
       });
-    }
-    
+}
+
     // 重置视图按钮 - 工具栏
     const resetViewBtn = document.getElementById('reset-view-btn');
     if (resetViewBtn) {
@@ -150,47 +150,7 @@ export async function init() {
       });
     }
     
-    // 筛选按钮
-    const filterBtn = document.getElementById('filter-btn');
-    if (filterBtn) {
-      filterBtn.addEventListener('click', function() {
-        const filterPanel = document.getElementById('filter-panel');
-        const filterOverlay = document.getElementById('filter-overlay');
-        if (filterPanel) {
-          filterPanel.classList.add('visible');
-        }
-        if (filterOverlay) {
-          filterOverlay.classList.add('visible');
-        }
-      });
-    }
-    
-    // 关闭筛选面板按钮
-    const closeFilterPanel = document.getElementById('close-filter-panel');
-    if (closeFilterPanel) {
-      closeFilterPanel.addEventListener('click', function() {
-        const filterPanel = document.getElementById('filter-panel');
-        const filterOverlay = document.getElementById('filter-overlay');
-        if (filterPanel) {
-          filterPanel.classList.remove('visible');
-        }
-        if (filterOverlay) {
-          filterOverlay.classList.remove('visible');
-        }
-      });
-    }
-    
-    // 点击遮罩层关闭筛选面板
-    const filterOverlay = document.getElementById('filter-overlay');
-    if (filterOverlay) {
-      filterOverlay.addEventListener('click', function() {
-        const filterPanel = document.getElementById('filter-panel');
-        if (filterPanel) {
-          filterPanel.classList.remove('visible');
-        }
-        this.classList.remove('visible');
-      });
-    }
+    // 注意：筛选按钮相关功能已在ui.js中的setupFilterPanel函数中实现
     
     // 搜索按钮
     const searchBtn = document.getElementById('search-btn');
@@ -200,7 +160,7 @@ export async function init() {
         if (query) {
           // 实现搜索逻辑
           console.log('搜索:', query);
-        }
+      }
       });
     }
     
@@ -211,7 +171,7 @@ export async function init() {
         const adminModal = document.getElementById('admin-modal');
         if (adminModal) {
           adminModal.style.display = 'none';
-        }
+      }
       });
     }
     

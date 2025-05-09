@@ -4,7 +4,7 @@
  */
 
 import { formatDateTime } from "./utils.js";
-import { fetchScholarDetails, updateScholar, addScholar, API_BASE_URL, migrateData } from "./api.js";
+import { fetchScholarDetails, updateScholar, updateScholarTags, addScholar, API_BASE_URL, migrateData } from "./api.js";
 import { addNewScholar, getScholarById } from "./data.js";
 import { getFCoseLayoutOptions } from "./graph.js";
 import { applyLayout } from "./core.js";
@@ -390,6 +390,21 @@ export function setupAddScholarPanel() {
   // 打开添加学者面板
   addScholarPanelBtn.addEventListener("click", function () {
     addScholarModal.style.display = "block";
+    
+    // 初始化关系管理所需数据
+    loadRelationshipData();
+    
+    // 确保默认激活第一个选项卡（添加学者）
+    const tabButtons = document.querySelectorAll('.add-manage-tabs .tab-button');
+    if (tabButtons.length > 0) {
+      tabButtons.forEach(btn => btn.classList.remove('active'));
+      tabButtons[0].classList.add('active');
+      
+      // 激活对应的面板
+      const tabPanels = document.querySelectorAll('.tab-panel');
+      tabPanels.forEach(panel => panel.classList.remove('active'));
+      document.getElementById('add-scholars-tab').classList.add('active');
+    }
   });
 
   // 关闭添加学者面板
@@ -411,6 +426,9 @@ export function setupAddScholarPanel() {
       addScholarModal.style.display = "none";
     }
   });
+  
+  // 设置选项卡切换
+  setupTabSwitching();
 
   // 添加单个学者按钮
   const addNewScholarBtn = document.getElementById("add-new-scholar-btn");
@@ -444,6 +462,9 @@ export function setupAddScholarPanel() {
             nameInput.value = "";
             idInput.value = "";
             showAddScholarStatus(`成功添加学者 ${result.scholar_name || name}`, "success");
+            
+            // 更新关系管理下拉菜单
+            loadRelationshipData();
           } else {
             showAddScholarStatus(`添加学者失败: ${result?.error || '未知错误'}`, "error");
           }
@@ -499,6 +520,9 @@ export function setupAddScholarPanel() {
         if (data.success) {
           batchInput.value = "";
           showAddScholarStatus(`成功添加 ${data.added}/${scholarLines.length} 位学者`, "success");
+          
+          // 更新关系管理下拉菜单
+          loadRelationshipData();
         } else {
           showAddScholarStatus(`批量添加学者失败: ${data.error || '未知错误'}`, "error");
         }
@@ -511,6 +535,262 @@ export function setupAddScholarPanel() {
       });
     });
   }
+  
+  // 添加关系按钮
+  const addRelationBtn = document.getElementById("add-relation-btn");
+  if (addRelationBtn) {
+    addRelationBtn.addEventListener("click", function() {
+      addRelationship();
+    });
+  }
+}
+
+/**
+ * 设置选项卡切换功能
+ */
+function setupTabSwitching() {
+  const tabButtons = document.querySelectorAll('.add-manage-tabs .tab-button');
+  
+  tabButtons.forEach(button => {
+    button.addEventListener('click', function() {
+      // 移除所有选项卡的激活状态
+      tabButtons.forEach(btn => btn.classList.remove('active'));
+      
+      // 激活当前选项卡
+      this.classList.add('active');
+      
+      // 获取对应的面板ID
+      const tabName = this.getAttribute('data-tab');
+      
+      // 隐藏所有面板
+      const tabPanels = document.querySelectorAll('.tab-panel');
+      tabPanels.forEach(panel => panel.classList.remove('active'));
+      
+      // 显示对应面板
+      if (tabName === 'scholars') {
+        document.getElementById('add-scholars-tab').classList.add('active');
+      } else if (tabName === 'relationships') {
+        document.getElementById('manage-relationships-tab').classList.add('active');
+        // 加载关系管理数据
+        loadRelationshipData();
+      }
+    });
+  });
+}
+
+/**
+ * 加载关系管理所需数据
+ */
+function loadRelationshipData() {
+  // 填充学者选择框
+  const sourceSelector = document.getElementById("source-scholar");
+  const targetSelector = document.getElementById("target-scholar");
+  
+  if (!sourceSelector || !targetSelector) return;
+  
+  // 清空选择框
+  sourceSelector.innerHTML = "";
+  targetSelector.innerHTML = "";
+  
+  // 添加选项
+  Object.entries(window.scholars).forEach(([id, scholar]) => {
+    const option = document.createElement("option");
+    option.value = id;
+    option.textContent = scholar.name;
+    
+    // 添加到源选择框
+    sourceSelector.appendChild(option.cloneNode(true));
+    
+    // 添加到目标选择框
+    targetSelector.appendChild(option);
+  });
+  
+  // 加载现有的关系列表
+  loadRelationshipList();
+}
+
+/**
+ * 加载关系列表
+ */
+function loadRelationshipList() {
+  const relationshipList = document.getElementById("relationship-list");
+  if (!relationshipList) return;
+  
+  // 显示加载状态
+  relationshipList.innerHTML = '<div class="loading">加载中...</div>';
+  
+  // 获取自定义关系
+  fetch(`${API_BASE_URL}/relationships/custom`)
+    .then(response => response.json())
+    .then(data => {
+      if (data.success && data.relationships) {
+        if (data.relationships.length === 0) {
+          relationshipList.innerHTML = '<div class="empty-list">暂无自定义关系</div>';
+          return;
+        }
+        
+        let html = '';
+        data.relationships.forEach(rel => {
+          const sourceScholar = window.scholars[rel.source_id];
+          const targetScholar = window.scholars[rel.target_id];
+          
+          // 跳过找不到学者信息的关系
+          if (!sourceScholar || !targetScholar) return;
+          
+          // 关系类型映射
+          const relationTypes = {
+            'coauthor': '合作者',
+            'advisor': '导师',
+            'colleague': '同事'
+          };
+          
+          const relationType = relationTypes[rel.relation_type] || rel.relation_type;
+          
+          html += `
+            <div class="relationship-item" data-id="${rel.id}">
+              <div class="relationship-info">
+                <span class="source-scholar">${sourceScholar.name}</span>
+                <span class="relation-arrow">→</span>
+                <span class="relation-type">${relationType}</span>
+                <span class="relation-arrow">→</span>
+                <span class="target-scholar">${targetScholar.name}</span>
+              </div>
+              <button class="delete-relation-btn" data-id="${rel.id}">
+                <i class="fas fa-trash"></i>
+              </button>
+            </div>
+          `;
+        });
+        
+        relationshipList.innerHTML = html;
+        
+        // 添加删除关系事件
+        const deleteButtons = relationshipList.querySelectorAll('.delete-relation-btn');
+        deleteButtons.forEach(button => {
+          button.addEventListener('click', function() {
+            const relationId = this.getAttribute('data-id');
+            if (confirm('确定要删除此关系吗？')) {
+              deleteRelationship(relationId);
+            }
+          });
+        });
+      } else {
+        relationshipList.innerHTML = '<div class="error">加载关系失败</div>';
+      }
+    })
+    .catch(error => {
+      console.error('加载关系列表失败:', error);
+      relationshipList.innerHTML = '<div class="error">加载关系失败</div>';
+    });
+}
+
+/**
+ * 添加关系
+ */
+function addRelationship() {
+  const sourceSelector = document.getElementById("source-scholar");
+  const targetSelector = document.getElementById("target-scholar");
+  const relationTypeSelector = document.getElementById("relation-type");
+  
+  if (!sourceSelector || !targetSelector || !relationTypeSelector) return;
+  
+  const sourceId = sourceSelector.value;
+  const targetId = targetSelector.value;
+  const relationType = relationTypeSelector.value;
+  
+  if (!sourceId || !targetId) {
+    showAddScholarStatus("请选择源学者和目标学者", "error");
+    return;
+  }
+  
+  // 显示加载状态
+  const addRelationBtn = document.getElementById("add-relation-btn");
+  if (addRelationBtn) {
+    addRelationBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 添加中...';
+    addRelationBtn.disabled = true;
+  }
+  
+  // 调用API添加关系
+  fetch(`${API_BASE_URL}/relationships/add`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      source_id: sourceId,
+      target_id: targetId,
+      relation_type: relationType
+    })
+  })
+  .then(response => response.json())
+  .then(data => {
+    // 恢复按钮状态
+    if (addRelationBtn) {
+      addRelationBtn.innerHTML = '添加关系';
+      addRelationBtn.disabled = false;
+    }
+    
+    if (data.success) {
+      showAddScholarStatus("关系添加成功", "success");
+      
+      // 刷新关系列表
+      loadRelationshipList();
+      
+      // 刷新图谱
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
+    } else {
+      showAddScholarStatus(`添加关系失败: ${data.error || '未知错误'}`, "error");
+    }
+  })
+  .catch(error => {
+    // 恢复按钮状态
+    if (addRelationBtn) {
+      addRelationBtn.innerHTML = '添加关系';
+      addRelationBtn.disabled = false;
+    }
+    
+    console.error('添加关系失败:', error);
+    showAddScholarStatus(`添加关系失败: ${error.message || '未知错误'}`, "error");
+  });
+}
+
+/**
+ * 删除关系
+ * @param {string} relationId - 关系ID
+ */
+function deleteRelationship(relationId) {
+  if (!relationId) return;
+  
+  // 调用API删除关系
+  fetch(`${API_BASE_URL}/relationships/delete`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ id: relationId })
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      showAddScholarStatus("关系删除成功", "success");
+      
+      // 刷新关系列表
+      loadRelationshipList();
+      
+      // 刷新图谱
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
+    } else {
+      showAddScholarStatus(`删除关系失败: ${data.error || '未知错误'}`, "error");
+    }
+  })
+  .catch(error => {
+    console.error('删除关系失败:', error);
+    showAddScholarStatus(`删除关系失败: ${error.message || '未知错误'}`, "error");
+  });
 }
 
 /**
@@ -702,7 +982,7 @@ export function setupAdminPanel() {
       }
     });
   }
-  
+
   // 批量添加学者按钮
   const batchAddBtn = document.getElementById("batch-add-btn");
   if (batchAddBtn) {
@@ -1029,22 +1309,33 @@ function removeTag(tag) {
  */
 function saveScholarTags() {
   if (!window.activeNodeId || !window.scholars[window.activeNodeId]) {
+    showStatusMessage("未选择学者，无法保存标签", "error");
     return;
   }
   
   const scholarData = window.scholars[window.activeNodeId];
   
-  // 更新标签到服务器
-  updateScholar(window.activeNodeId, { tags: scholarData.tags })
+  // 确保标签为数组
+  const tags = scholarData.tags || [];
+  console.log(`保存学者 ${window.activeNodeId} 的标签:`, tags);
+  
+  // 显示加载状态
+  showStatusMessage("正在保存标签...", "info");
+  
+  // 使用正确的API端点更新标签
+  updateScholarTags(window.activeNodeId, tags)
     .then(result => {
       if (result.success) {
+        // 更新本地学者数据
+        window.scholars[window.activeNodeId].tags = tags;
+        
         // 更新详情面板中的标签显示
         const tagsEl = document.querySelector("#scholar-tags .scholar-tags");
         if (tagsEl) {
-          if (scholarData.tags && scholarData.tags.length > 0) {
+          if (tags && tags.length > 0) {
             let tagsHTML = "";
-            scholarData.tags.forEach((tag) => {
-              tagsHTML += `<span class="scholar-tag">${tag}</span>`;
+            tags.forEach((tag) => {
+              tagsHTML += `<span class="scholar-tag" data-tag="${tag}">${tag}</span>`;
             });
             tagsEl.innerHTML = tagsHTML;
           } else {
@@ -1052,15 +1343,24 @@ function saveScholarTags() {
           }
         }
         
+        // 如果学者节点在图上可见，更新图上的标签
+        if (window.cy) {
+          const node = window.cy.getElementById(window.activeNodeId);
+          if (node.length > 0) {
+            node.data('tags', tags);
+          }
+        }
+        
         showStatusMessage("标签已保存", "success");
       } else {
-        showStatusMessage("保存标签失败", "error");
+        console.error("保存标签失败:", result);
+        showStatusMessage(`保存标签失败: ${result.error || '未知错误'}`, "error");
       }
     })
     .catch(error => {
       console.error("保存标签失败:", error);
-      showStatusMessage("保存标签失败", "error");
-  });
+      showStatusMessage(`保存标签失败: ${error.message || '网络错误'}`, "error");
+    });
 }
 
 /**
@@ -1451,7 +1751,7 @@ function applyAdvancedFilters() {
   if (hasAdvancedFilters) {
     // 如果有高级筛选条件，通过API进行查询
     applyAdvancedFilterViaAPI(filterParams);
-  } else {
+      } else {
     // 如果只有基本筛选条件，使用客户端筛选
     applyFilters();
   }
@@ -1619,16 +1919,22 @@ function applyFilters() {
   const showAdvisor = document.getElementById('show-advisor').checked;
   const showColleague = document.getElementById('show-colleague').checked;
   
+  // 获取节点总数
+  const totalNodes = window.cy.nodes().length;
+  // 移除基于节点总数的筛选逻辑
+  // const shouldApplyConnectionFilter = totalNodes >= 20;
+  const shouldApplyConnectionFilter = false; // 始终不应用连接数筛选
+  
   // 筛选节点
   window.cy.nodes().forEach(node => {
     // 初始状态：显示所有节点
     node.removeClass('filtered');
     
-    // 移除基于连接数的筛选逻辑
-    // const connections = node.connectedEdges().length;
-    // if (connections < minConnections) {
-    //   node.addClass('filtered');
-    // }
+    // 基于连接数的筛选逻辑
+    const connections = node.connectedEdges().length;
+    if (connections < minConnections) {
+      node.addClass('filtered');
+    }
     
     // 根据节点类型筛选
     const nodeType = node.data('nodeType');
@@ -1752,7 +2058,7 @@ function updateFilteredGraph() {
   window.cy.elements().forEach(ele => {
     if (ele.hasClass('filtered')) {
       ele.style('display', 'none');
-    } else {
+  } else {
       ele.style('display', 'element');
     }
   });
@@ -2145,7 +2451,7 @@ function filterByTagElements() {
     // 如果节点没有选中的标签之一，隐藏它
     if (!selectedTags.some((tag) => nodeTags.includes(tag))) {
       node.addClass("hidden");
-    } else {
+      } else {
       node.removeClass("hidden");
     }
   });
@@ -2192,38 +2498,6 @@ function highlightNodesByTag(tag) {
 
   // 显示"返回全局视图"按钮
   document.getElementById("graph-view-btn").classList.remove("hidden");
-}
-
-/**
- * 更新学者标签显示
- * @param {string} scholarId - 学者ID
- */
-function updateScholarTags(scholarId) {
-  const tagsContainer = document.querySelector("#scholar-tags .scholar-tags");
-  const scholarData = window.scholars[scholarId];
-
-  // 如果是关联学者，显示不可用信息
-  if (scholarData && scholarData.is_secondary) {
-    tagsContainer.textContent = "关联学者不支持标签";
-    document.getElementById("tag-add-btn").style.display = "none"; // 隐藏添加标签按钮
-    return;
-  }
-
-  // 恢复添加标签按钮
-  document.getElementById("tag-add-btn").style.display = "";
-
-  if (!scholarData || !scholarData.tags || scholarData.tags.length === 0) {
-    tagsContainer.textContent = "无标签";
-    return;
-  }
-
-  let tagsHTML = "";
-  for (const tag of scholarData.tags) {
-    // 添加data-tag属性以便应用特定的标签样式
-    tagsHTML += `<span class="scholar-tag" data-tag="${tag}">${tag}</span>`;
-  }
-
-  tagsContainer.innerHTML = tagsHTML;
 }
 
 /**

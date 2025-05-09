@@ -323,7 +323,6 @@ class DataService:
             all_secondary_scholar_ids = set(secondary_scholar_connections.keys())
             
             # 确定是否要显示所有关联学者
-            # 如果总节点数(主要学者+关联学者)小于20个，则显示所有关联学者
             total_nodes_count = len(main_scholar_ids)
             show_all_secondary = total_nodes_count < 20
             
@@ -755,7 +754,8 @@ class DataService:
             
             # 至少有一个连接（如适用）
             min_connections = filter_params.get('minConnections', 1)
-            if min_connections > 1:
+            # 添加连接数筛选，即使是1也添加条件，这样保证参数生效
+            if min_connections >= 1:
                 sql_parts['joins'].append('LEFT JOIN relationships r ON r.source_id = s.scholar_id OR r.target_id = s.scholar_id')
                 sql_parts['where'].append('(SELECT COUNT(*) FROM relationships WHERE source_id = s.scholar_id OR target_id = s.scholar_id) >= ?')
                 sql_parts['params'].append(min_connections)

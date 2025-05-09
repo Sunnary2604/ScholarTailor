@@ -27,12 +27,6 @@
             <input type="text" id="search-input" placeholder="搜索学者..." />
             <button id="search-btn">搜索</button>
           </div>
-          <button id="filter-btn" class="nav-btn" title="筛选设置">
-            <i class="fas fa-filter"></i>
-          </button>
-          <button id="add-scholar-panel-btn" class="nav-btn" title="添加学者">
-            <i class="fas fa-plus"></i>
-          </button>
           <button id="admin-btn" class="admin-btn" title="管理面板">
             <i class="fas fa-cog"></i>
           </button>
@@ -46,19 +40,29 @@
             <div id="cy"></div>
             <!-- 添加右上角控制按钮 -->
             <div class="graph-controls">
-              <div id="data-status" class="status-indicator">
-                正在加载数据...
-              </div>
-              <button id="reset-view-btn" title="重置视图">
-                <i class="fas fa-expand-arrows-alt"></i> 重置视图
+             
+              <button id="reset-view-btn" title="重置焦点">
+                <i class="fas fa-expand-arrows-alt"></i> 重置焦点
               </button>
-              <button id="reload-data-btn" title="刷新数据">
-                <i class="fas fa-sync-alt"></i> 刷新数据
-              </button>
+             
               <button id="reset-layout-btn" title="重新应用布局">
                 <i class="fas fa-sync-alt"></i> 重新布局
               </button>
+              <button id="filter-btn" class="graph-btn" title="筛选设置">
+                <i class="fas fa-filter"></i> 筛选
+              </button>
+              <button id="reload-data-btn" title="重置数据筛选">
+                <i class="fas fa-sync-alt"></i> 重置
+              </button>
+              <div id="data-status" class="status-indicator">
+                正在加载数据...
+              </div>
             </div>
+            
+            <!-- 添加右下角悬浮按钮 -->
+            <button id="add-scholar-panel-btn" class="add-scholar-floating-btn" title="添加学者与管理关系">
+              <i class="fas fa-plus"></i>
+            </button>
           </div>
 
           <div class="detail-panel">
@@ -426,51 +430,93 @@
     <div id="add-scholar-modal" class="modal">
       <div class="modal-content">
         <div class="modal-header">
-          <h2>添加学者</h2>
+          <h2>添加与管理</h2>
           <span class="close-modal" id="close-add-scholar-modal">&times;</span>
         </div>
         <div class="modal-body">
-          <div class="section-header">
-            <h3>添加单个学者</h3>
+          <!-- 选项卡导航 -->
+          <div class="add-manage-tabs">
+            <button class="tab-button active" data-tab="scholars">添加学者</button>
+            <button class="tab-button" data-tab="relationships">管理关系</button>
           </div>
+          
+          <!-- 添加学者选项卡 -->
+          <div id="add-scholars-tab" class="tab-panel active">
+            <div class="section-header">
+              <h3>添加单个学者</h3>
+            </div>
 
-          <div class="scholar-add">
-            <div>
-              <div class="form-group">
-                <label>学者名称:</label>
-                <input
-                  type="text"
-                  id="add-scholar-input"
-                  placeholder="输入学者名称..."
-                />
-              </div>
-              <div class="form-group">
-                <label>Scholar ID 或页面链接:</label>
-                <input
-                  type="text"
-                  id="add-scholar-id"
-                  placeholder="输入Google Scholar ID或完整页面链接..."
-                />
-                <div class="hint-text">
-                  可直接粘贴Scholar页面链接，系统会自动提取ID
+            <div class="scholar-add">
+              <div>
+                <div class="form-group">
+                  <label>学者名称:</label>
+                  <input
+                    type="text"
+                    id="add-scholar-input"
+                    placeholder="输入学者名称..."
+                  />
+                </div>
+                <div class="form-group">
+                  <label>Scholar ID 或页面链接:</label>
+                  <input
+                    type="text"
+                    id="add-scholar-id"
+                    placeholder="输入Google Scholar ID或完整页面链接..."
+                  />
+                  <div class="hint-text">
+                    可直接粘贴Scholar页面链接，系统会自动提取ID
+                  </div>
                 </div>
               </div>
+              <button id="add-new-scholar-btn" class="btn">爬取学者</button>
             </div>
-            <button id="add-new-scholar-btn" class="btn">爬取学者</button>
-          </div>
 
-          <div class="scholar-batch">
-            <h3>批量添加学者</h3>
-            <textarea
-              id="add-batch-scholars"
-              placeholder="批量添加多位学者，每行一个 Google Scholar ID 或页面链接或学者名称..."
-            ></textarea>
-            <div class="hint-text">
-              推荐使用Scholar ID或页面链接，可避免重名问题。每行输入一个，系统会自动识别ID和名称
+            <div class="scholar-batch">
+              <h3>批量添加学者</h3>
+              <textarea
+                id="add-batch-scholars"
+                placeholder="批量添加多位学者，每行一个 Google Scholar ID 或页面链接或学者名称..."
+              ></textarea>
+              <div class="hint-text">
+                推荐使用Scholar ID或页面链接，可避免重名问题。每行输入一个，系统会自动识别ID和名称
+              </div>
+              <button id="add-batch-scholars-btn" class="btn">批量爬取</button>
             </div>
-            <button id="add-batch-scholars-btn" class="btn">批量爬取</button>
           </div>
+          
+          <!-- 管理关系选项卡 -->
+          <div id="manage-relationships-tab" class="tab-panel">
+            <div class="section-header">
+              <h3>关系管理</h3>
+            </div>
 
+            <div class="relationship-add">
+              <div class="form-group">
+                <label>源学者:</label>
+                <select id="source-scholar"></select>
+              </div>
+              <div class="form-group">
+                <label>关系类型:</label>
+                <select id="relation-type">
+                  <option value="coauthor">合作者</option>
+                  <option value="advisor">导师</option>
+                  <option value="colleague">同事</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>目标学者:</label>
+                <select id="target-scholar"></select>
+              </div>
+              <button id="add-relation-btn" class="btn">添加关系</button>
+            </div>
+
+            <div class="relationship-list-section">
+              <h4>自定义关系列表</h4>
+              <div class="relationship-list" id="relationship-list">
+                <div class="loading">加载中...</div>
+              </div>
+            </div>
+          </div>
         </div>
         <div class="modal-footer">
           <div class="status-message" id="add-scholar-status"></div>
