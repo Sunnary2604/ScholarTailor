@@ -221,11 +221,12 @@ def batch_add_scholars():
 @app.route("/api/scholars/update", methods=["POST"])
 def update_scholar():
     """更新学者信息API
-    将关联学者更新为主要学者并获取最新数据
+    更新学者信息或修改学者状态
 
     接收JSON参数:
     {
-        "id": "学者ID"
+        "id": "学者ID",
+        "is_main_scholar": 0|1|2 (可选) - 0=关联学者，1=主要学者，2=不感兴趣
     }
 
     返回:
@@ -235,28 +236,69 @@ def update_scholar():
     }
     """
     try:
+        app.logger.info(f"DEBUGTAG: 接收到scholars/update请求")
         data = request.json
+        app.logger.info(f"DEBUGTAG: 请求内容: {data}")
 
         # 验证参数
         if not data or "id" not in data:
+            app.logger.error(f"DEBUGTAG: 缺少必要参数")
             return jsonify({"success": False, "error": "缺少必要参数"})
 
-        # 更新学者信息
+        # 获取参数
         scholar_id = data.get("id")
-        result = scholar_service.update_scholar(scholar_id)
+        is_main_scholar = data.get("is_main_scholar")
+        app.logger.info(
+            f"DEBUGTAG: 解析参数 - scholar_id={scholar_id}, is_main_scholar={is_main_scholar}"
+        )
 
-        # 如果更新成功，重新生成网络数据
-        if result["success"]:
-            try:
-                data_service.regenerate_network_data()
-            except Exception as regen_error:
-                logging.warning(f"重新生成网络数据时出错: {str(regen_error)}")
-                # 不中断流程，继续返回成功结果
+        # 记录操作
+        if is_main_scholar is not None:
+            app.logger.info(
+                f"DEBUGTAG: 更新学者状态: id={scholar_id}, is_main_scholar={is_main_scholar}"
+            )
+            # 更新学者状态 - 直接使用update_scholar, 传递状态值
+            result = scholar_service.update_scholar(scholar_id, is_main_scholar)
+            app.logger.info(f"DEBUGTAG: 学者状态更新返回结果: {result}")
 
-        return jsonify(result)
+            # 如果更新成功，重新生成网络数据
+            if result["success"]:
+                try:
+                    app.logger.info(f"DEBUGTAG: 重新生成网络数据")
+                    data_service.regenerate_network_data()
+                except Exception as regen_error:
+                    app.logger.warning(
+                        f"DEBUGTAG: 重新生成网络数据时出错: {str(regen_error)}"
+                    )
+                    # 不中断流程，继续返回成功结果
+
+            app.logger.info(f"DEBUGTAG: 返回响应: {result}")
+            return jsonify(result)
+        else:
+            # 执行标准的学者更新操作（爬取详细数据）
+            app.logger.info(f"DEBUGTAG: 爬取学者详细数据: id={scholar_id}")
+            result = scholar_service.update_scholar(scholar_id)
+            app.logger.info(f"DEBUGTAG: 学者更新返回结果: {result}")
+
+            # 如果更新成功，重新生成网络数据
+            if result["success"]:
+                try:
+                    app.logger.info(f"DEBUGTAG: 重新生成网络数据")
+                    data_service.regenerate_network_data()
+                except Exception as regen_error:
+                    app.logger.warning(
+                        f"DEBUGTAG: 重新生成网络数据时出错: {str(regen_error)}"
+                    )
+                    # 不中断流程，继续返回成功结果
+
+            app.logger.info(f"DEBUGTAG: 返回响应: {result}")
+            return jsonify(result)
 
     except Exception as e:
-        logging.error(f"更新学者信息时出错: {str(e)}")
+        app.logger.error(f"DEBUGTAG: 更新学者信息时出错: {str(e)}")
+        import traceback
+
+        app.logger.error(traceback.format_exc())
         return jsonify({"success": False, "error": str(e)})
 
 
@@ -385,21 +427,6 @@ def migrate_data():
     return resp.from_result(result, resp.COMMON_ERROR_MAPPING)
 
 
-# API端点：将关联学者转换为主要学者
-@app.route("/api/scholars/convert-to-main", methods=["POST"])
-def convert_to_main_scholar():
-    data = request.json
-    if not data or "scholar_id" not in data:
-        return resp.error("缺少学者ID", 400)
-
-    result = scholar_service.convert_to_main_scholar(data["scholar_id"])
-
-    if result["success"]:
-        data_service.regenerate_network_data()
-
-    return resp.from_result(result, resp.COMMON_ERROR_MAPPING)
-
-
 # API端点：根据ID获取学者详情
 @app.route("/api/scholars/<scholar_id>", methods=["GET"])
 def get_scholar_by_id(scholar_id):
@@ -439,6 +466,22 @@ def filter_scholars():
         # 记录筛选参数的键
         app.logger.info(f"筛选参数键: {list(filter_params.keys())}")
 
+        # 确保hideNotInterested参数被处理（转换为布尔值）
+        if "hideNotInterested" in filter_params:
+            hide_not_interested = filter_params.get("hideNotInterested")
+            # 确保是布尔值
+            if isinstance(hide_not_interested, str):
+                hide_not_interested = hide_not_interested.lower() == "true"
+            elif not isinstance(hide_not_interested, bool):
+                hide_not_interested = bool(hide_not_interested)
+            filter_params["hideNotInterested"] = bool(hide_not_interested)
+            app.logger.info(
+                f"处理hideNotInterested参数: {filter_params['hideNotInterested']} (类型: {type(filter_params['hideNotInterested'])})"
+            )
+            print(
+                f"【API调试】hideNotInterested = {filter_params['hideNotInterested']} (类型: {type(filter_params['hideNotInterested'])})"
+            )
+
         # 执行筛选
         result = data_service.filter_network_data(filter_params)
 
@@ -456,6 +499,22 @@ def filter_scholars():
         error_msg = f"执行筛选时出错: {str(e)}"
         app.logger.error(error_msg)
         return resp.error(error_msg, 500)
+
+
+# API端点：将关联学者转换为主要学者
+@app.route("/api/scholars/convert-to-main", methods=["POST"])
+def convert_to_main_scholar():
+    data = request.json
+    if not data or "scholar_id" not in data:
+        return resp.error("缺少学者ID", 400)
+
+    # 直接使用update_scholar, 设置状态为1
+    result = scholar_service.update_scholar(data["scholar_id"], 1)
+
+    if result["success"]:
+        data_service.regenerate_network_data()
+
+    return resp.from_result(result, resp.COMMON_ERROR_MAPPING)
 
 
 # 全局错误处理
@@ -492,29 +551,45 @@ if __name__ == "__main__":
                 scholar_files = [
                     f for f in os.listdir(SCHOLARS_DIR) if f.endswith(".json")
                 ]
-                for file in scholar_files:
-                    try:
-                        with open(
-                            os.path.join(SCHOLARS_DIR, file), "r", encoding="utf-8"
-                        ) as f:
-                            scholar_data = json.load(f)
-                            scholar_id = scholar_data.get("scholar_id")
-                            if scholar_id:
-                                # 使用scholar_service导入学者数据
-                                result = scholar_service._import_scholar_complete(
-                                    scholar_id, scholar_data
-                                )
-                                if result["success"]:
-                                    print(f"成功导入学者文件: {file}")
-                                else:
-                                    print(
-                                        f"导入学者文件失败: {file}, 错误: {result.get('error')}"
-                                    )
-                    except Exception as e:
-                        print(f"处理学者文件出错: {file}, 错误: {str(e)}")
 
-                # 导入完成后重新生成网络数据
-                data_service.regenerate_network_data()
+                # 开始事务
+                from db.db_manager import DBManager
+
+                db_manager = DBManager()
+                db_manager.begin_transaction()
+
+                try:
+                    for file in scholar_files:
+                        try:
+                            with open(
+                                os.path.join(SCHOLARS_DIR, file), "r", encoding="utf-8"
+                            ) as f:
+                                scholar_data = json.load(f)
+                                scholar_id = scholar_data.get("scholar_id")
+                                if scholar_id:
+                                    # 使用scholar_service导入学者数据，设置为主要学者
+                                    result = scholar_service._import_scholar_complete(
+                                        scholar_id, scholar_data, is_main_scholar=1
+                                    )
+                                    if result["success"]:
+                                        print(f"成功导入学者文件: {file}")
+                                    else:
+                                        print(
+                                            f"导入学者文件失败: {file}, 错误: {result.get('error')}"
+                                        )
+                        except Exception as e:
+                            print(f"处理学者文件出错: {file}, 错误: {str(e)}")
+
+                    # 提交事务
+                    db_manager.commit()
+
+                    # 导入完成后重新生成网络数据
+                    data_service.regenerate_network_data()
+
+                except Exception as e:
+                    # 发生错误，回滚事务
+                    db_manager.rollback()
+                    print(f"批量导入学者数据失败，已回滚: {str(e)}")
     else:
         print(f"数据库文件已存在: {DB_PATH}")
 

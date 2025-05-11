@@ -59,8 +59,10 @@ class ScholarService:
             if not scholar_data:
                 return {"success": False, "error": f'未找到ID为 "{scholar_id}" 的学者'}
 
-            # 处理学者数据 - 使用新方法全面导入
-            result = self._import_scholar_complete(scholar_id, scholar_data)
+            # 处理学者数据 - 使用新方法全面导入，设置为主要学者
+            result = self._import_scholar_complete(
+                scholar_id, scholar_data, is_main_scholar=1
+            )
 
             if result["success"]:
                 scholar_name = scholar_data.get("name", "Unknown")
@@ -104,8 +106,10 @@ class ScholarService:
             if not scholar_id:
                 return {"success": False, "error": "获取的学者数据中缺少scholar_id"}
 
-            # 处理学者数据 - 使用新方法全面导入
-            result = self._import_scholar_complete(scholar_id, scholar_data)
+            # 处理学者数据 - 使用新方法全面导入，设置为主要学者
+            result = self._import_scholar_complete(
+                scholar_id, scholar_data, is_main_scholar=1
+            )
 
             if result["success"]:
                 scholar_name = scholar_data.get("name", name)
@@ -149,8 +153,10 @@ class ScholarService:
                     if not scholar_id:
                         continue
 
-                    # 处理学者数据 - 使用新方法全面导入
-                    result = self._import_scholar_complete(scholar_id, scholar_data)
+                    # 处理学者数据 - 使用新方法全面导入，设置为主要学者
+                    result = self._import_scholar_complete(
+                        scholar_id, scholar_data, is_main_scholar=1
+                    )
 
                     if result["success"]:
                         added_count += 1
@@ -169,194 +175,154 @@ class ScholarService:
             self.logger.error(f"批量添加学者时出错: {str(e)}")
             return {"success": False, "error": str(e), "added": 0}
 
-    def _import_scholar_complete(self, scholar_id, scholar_data):
+    def _import_scholar_complete(self, scholar_id, scholar_data, is_main_scholar=None):
         """全面导入学者数据到所有相关表
 
         Args:
             scholar_id: 学者ID
             scholar_data: 爬取的学者数据
+            is_main_scholar: 学者状态，为None时保持现有状态不变
 
         Returns:
             dict: {'success': bool, 'error': str}
         """
         try:
-            # 开始事务
-            from db.db_manager import DBManager
+            # 提取学者名称和基本信息
+            scholar_name = scholar_data.get("name", "Unknown Scholar")
 
-            db_manager = DBManager()
-            db_manager.begin_transaction()
+            # 1. 创建或更新学者详情记录
+            self.scholar_dao.create_scholar(
+                scholar_id, scholar_data, is_main_scholar=is_main_scholar
+            )
 
+            # 2. 创建学者实体
+            entity_data = {
+                "source": scholar_data.get("source", "google_scholar"),
+                "filled": scholar_data.get("filled", True),
+            }
+            self.entity_dao.create_entity(
+                id=scholar_id, type="scholar", name=scholar_name, data=entity_data
+            )
+
+            # 3. 添加兴趣标签
+            interests = scholar_data.get("interests", [])
+            # 先删除旧的兴趣标签
+            self.interest_dao.delete_entity_interests(scholar_id)
+            # 添加新的兴趣标签
+            self.interest_dao.create_interests_batch(scholar_id, interests)
+
+            # 4. 批量导入论文数据
+            publications = scholar_data.get("publications", [])
+            self.logger.info(
+                f"准备导入 {len(publications)} 篇论文 - 学者: {scholar_name}"
+            )
+
+            # 批量处理论文数据
+            if publications:
+                # 预处理论文数据，过滤掉无效数据
+                valid_publications = []
+                for pub in publications:
+                    # 确保pub有有效的title字段
+                    # scholarly返回的数据结构中，title在bib子字典中
+                    if not pub:
+                        continue
+
+                    # 确保bib字段存在
+                    if "bib" not in pub:
+                        pub["bib"] = {}
+
+                    # 如果title在顶层，移动到bib中
+                    if "title" in pub and "title" not in pub["bib"]:
+                        pub["bib"]["title"] = pub["title"]
+
+                    # 检查是否有标题
+                    if not pub["bib"].get("title"):
+                        continue
+
+                    # 处理引用数据
+                    if "num_citations" not in pub and "citedby" in pub:
+                        pub["num_citations"] = pub["citedby"]
+
+                    # 检查cites_id字段
+                    if "cites_id" not in pub and "cluster_id" in pub:
+                        pub["cites_id"] = [pub["cluster_id"]]
+                    elif "cites_id" not in pub:
+                        # 确保cites_id字段存在，即使为空列表
+                        pub["cites_id"] = []
+
+                    valid_publications.append(pub)
+
+                # 批量导入论文数据
+                imported_pub_count = self._batch_import_publications(
+                    scholar_id, valid_publications
+                )
+            else:
+                imported_pub_count = 0
+
+            # 5. 批量导入合作者关系
+            coauthors = scholar_data.get("coauthors", [])
+            self.logger.info(
+                f"准备导入 {len(coauthors)} 位合作者 - 学者: {scholar_name}"
+            )
+
+            # 批量处理合作者数据
+            if coauthors:
+                # 预处理合作者数据，过滤掉无效数据
+                valid_coauthors = []
+                for coauthor in coauthors:
+                    if not coauthor or not coauthor.get("scholar_id"):
+                        continue
+                    valid_coauthors.append(coauthor)
+
+                # 批量导入合作者数据
+                imported_coauthor_count = self._batch_import_coauthors(
+                    scholar_id, valid_coauthors
+                )
+            else:
+                imported_coauthor_count = 0
+
+            # 6. 处理机构信息
             try:
-                # 提取学者名称和基本信息
-                scholar_name = scholar_data.get("name", "Unknown Scholar")
+                # 获取学者的机构信息
+                affiliation = scholar_data.get("affiliation", "")
 
-                # 1. 创建学者详情记录
-                self.scholar_dao.create_scholar(
-                    scholar_id, scholar_data, is_main_scholar=1
-                )
+                if affiliation:
+                    # 生成机构ID (使用哈希值避免重复)
+                    import hashlib
 
-                # 2. 创建学者实体
-                entity_data = {
-                    "source": scholar_data.get("source", "google_scholar"),
-                    "filled": scholar_data.get("filled", True),
-                }
-                self.entity_dao.create_entity(
-                    id=scholar_id, type="scholar", name=scholar_name, data=entity_data
-                )
+                    inst_id = f"inst_{hashlib.md5(affiliation.encode('utf-8')).hexdigest()[:12]}"
 
-                # 3. 添加兴趣标签
-                interests = scholar_data.get("interests", [])
-                # 先删除旧的兴趣标签
-                self.interest_dao.delete_entity_interests(scholar_id)
-                # 添加新的兴趣标签
-                self.interest_dao.create_interests_batch(scholar_id, interests)
-
-                # 4. 批量导入论文数据
-                publications = scholar_data.get("publications", [])
-                self.logger.info(
-                    f"准备导入 {len(publications)} 篇论文 - 学者: {scholar_name}"
-                )
-
-                # 批量处理论文数据
-                if publications:
-                    # 预处理论文数据，过滤掉无效数据
-                    valid_publications = []
-                    for pub in publications:
-                        # 确保pub有有效的title字段
-                        # scholarly返回的数据结构中，title在bib子字典中
-                        if not pub:
-                            continue
-
-                        # 确保bib字段存在
-                        if "bib" not in pub:
-                            pub["bib"] = {}
-
-                        # 如果title在顶层，移动到bib中
-                        if "title" in pub and "title" not in pub["bib"]:
-                            pub["bib"]["title"] = pub["title"]
-
-                        # 检查是否有标题
-                        if not pub["bib"].get("title"):
-                            self.logger.warning(f"跳过无标题论文: {pub}")
-                            continue
-
-                        # 处理引用数据
-                        if "num_citations" not in pub and "citedby" in pub:
-                            pub["num_citations"] = pub["citedby"]
-
-                        # 检查cites_id字段
-                        if "cites_id" not in pub and "cluster_id" in pub:
-                            pub["cites_id"] = [pub["cluster_id"]]
-                        elif "cites_id" not in pub:
-                            # 确保cites_id字段存在，即使为空列表
-                            pub["cites_id"] = []
-
-                        valid_publications.append(pub)
-
-                    self.logger.debug(
-                        f"有效论文数据: {len(valid_publications)}/{len(publications)}"
-                    )
-                    if valid_publications and len(valid_publications) > 0:
-                        self.logger.debug(
-                            f"第一篇论文数据示例: {valid_publications[0]}"
+                    # 先检查机构是否已存在
+                    if not self.institution_dao.get_institution_by_name(affiliation):
+                        # 创建机构记录，地区、国家和类型暂时留空
+                        self.institution_dao.create_institution(
+                            inst_id=inst_id,
+                            name=affiliation,
+                            type=None,
+                            url=None,
+                            lab=None,
                         )
-
-                    # 批量导入论文数据
-                    imported_pub_count = self._batch_import_publications(
-                        scholar_id, valid_publications
-                    )
-                    self.logger.info(
-                        f"成功导入 {imported_pub_count}/{len(publications)} 篇论文 - 学者: {scholar_name}"
-                    )
-                else:
-                    imported_pub_count = 0
-                    self.logger.info(f"学者 {scholar_name} 没有论文数据")
-
-                # 5. 批量导入合作者关系
-                coauthors = scholar_data.get("coauthors", [])
-                self.logger.info(
-                    f"准备导入 {len(coauthors)} 位合作者 - 学者: {scholar_name}"
-                )
-
-                # 批量处理合作者数据
-                if coauthors:
-                    # 预处理合作者数据，过滤掉无效数据
-                    valid_coauthors = []
-                    for coauthor in coauthors:
-                        if not coauthor or not coauthor.get("scholar_id"):
-                            continue
-                        valid_coauthors.append(coauthor)
-
-                    # 批量导入合作者数据
-                    imported_coauthor_count = self._batch_import_coauthors(
-                        scholar_id, valid_coauthors
-                    )
-                    self.logger.info(
-                        f"成功导入 {imported_coauthor_count}/{len(coauthors)} 位合作者 - 学者: {scholar_name}"
-                    )
-                else:
-                    imported_coauthor_count = 0
-                    self.logger.info(f"学者 {scholar_name} 没有合作者数据")
-
-                # 6. 处理机构信息
-                try:
-                    # 获取学者的机构信息
-                    affiliation = scholar_data.get("affiliation", "")
-
-                    if affiliation:
-                        # 生成机构ID (使用哈希值避免重复)
-                        import hashlib
-
-                        inst_id = f"inst_{hashlib.md5(affiliation.encode('utf-8')).hexdigest()[:12]}"
-
-                        # 先检查机构是否已存在
-                        if not self.institution_dao.get_institution_by_name(
+                    else:
+                        # 获取已存在机构的ID
+                        existing_inst = self.institution_dao.get_institution_by_name(
                             affiliation
-                        ):
-                            # 创建机构记录，地区、国家和类型暂时留空
-                            self.institution_dao.create_institution(
-                                inst_id=inst_id,
-                                name=affiliation,
-                                type=None,
-                                url=None,
-                                lab=None,
-                            )
-                            self.logger.info(f"创建新机构: {affiliation}")
-                        else:
-                            # 获取已存在机构的ID
-                            existing_inst = (
-                                self.institution_dao.get_institution_by_name(
-                                    affiliation
-                                )
-                            )
-                            if existing_inst:
-                                inst_id = existing_inst.get("inst_id")
-
-                        # 创建学者-机构关联
-                        self.institution_dao.create_scholar_institution_relation(
-                            scholar_id=scholar_id, inst_id=inst_id, is_current=True
                         )
-                        self.logger.info(
-                            f"建立学者-机构关联: {scholar_name} -> {affiliation}"
-                        )
-                except Exception as inst_error:
-                    self.logger.error(f"处理机构信息时出错: {str(inst_error)}")
-                    # 继续执行，不中断整个导入流程
+                        if existing_inst:
+                            inst_id = existing_inst.get("inst_id")
 
-                # 提交事务
-                db_manager.commit()
+                    # 创建学者-机构关联
+                    self.institution_dao.create_scholar_institution_relation(
+                        scholar_id=scholar_id, inst_id=inst_id, is_current=True
+                    )
+            except Exception as inst_error:
+                self.logger.error(f"处理机构信息错误: {str(inst_error)}")
+                # 继续执行，不中断整个导入流程
 
-                return {"success": True}
+            return {"success": True}
 
-            except Exception as inner_error:
-                # 回滚事务
-                db_manager.rollback()
-                self.logger.error(f"导入学者数据时出错，已回滚: {str(inner_error)}")
-                return {"success": False, "error": str(inner_error)}
-
-        except Exception as outer_error:
-            self.logger.error(f"准备导入学者数据时出错: {str(outer_error)}")
-            return {"success": False, "error": str(outer_error)}
+        except Exception as error:
+            self.logger.error(f"导入学者数据时出错: {str(error)}")
+            return {"success": False, "error": str(error)}
 
     def _batch_import_publications(self, scholar_id, publications):
         """批量导入论文数据
@@ -530,72 +496,123 @@ class ScholarService:
             self.logger.error(f"批量导入合作者时出错: {str(e)}")
             return 0
 
-    def update_scholar(self, scholar_id):
-        """更新学者信息，并将关联学者转换为主要学者
+    def update_scholar(self, scholar_id, data=None):
+        """获取并更新学者的详细信息
+
+        支持三种场景：
+        1. 只传入scholar_id：爬取新数据并设置为主要学者
+        2. 传入scholar_id和data包含is_main_scholar：直接更新学者状态
+        3. 传入scholar_id和is_main_scholar单独参数：专门用于状态更新
 
         Args:
             scholar_id: 学者ID
+            data: 可选，包含要更新的字段，如is_main_scholar
 
         Returns:
             dict: {'success': bool, 'message': str, 'error': str}
         """
         try:
-            if not self.crawler:
-                return {"success": False, "error": "未配置爬虫，无法获取学者数据"}
-
             # 获取学者当前信息
             scholar = self.scholar_dao.get_scholar_by_id(scholar_id)
             if not scholar:
-                return {
-                    "success": False,
-                    "error": f"未找到学者ID为 {scholar_id} 的记录",
-                }
+                return {"success": False, "error": f"未找到该学者记录"}
 
             # 获取学者实体信息以获取名称
             entity = self.entity_dao.get_entity_by_id(scholar_id)
             if not entity:
-                return {
-                    "success": False,
-                    "error": f"未找到学者ID为 {scholar_id} 的实体记录",
-                }
+                return {"success": False, "error": f"未找到该学者的实体记录"}
 
-            # 先获取scholar_name，确保变量在任何条件分支中都可用
+            # 获取scholar_name
             scholar_name = entity.get("name", "")
             if not scholar_name:
                 return {"success": False, "error": "无法确定学者名称"}
 
-            # 优先使用ID直接获取学者数据
-            updated_data = self.crawler.search_author_by_id(scholar_id)
-
-            # 如果使用ID获取失败，则尝试使用名称
-            if not updated_data:
+            # 特殊处理：如果data是整数值，则它是is_main_scholar参数
+            # 这样支持直接调用update_scholar(scholar_id, 1)来设置为主要学者
+            is_main_scholar = None
+            if isinstance(data, int) and data in [0, 1, 2]:
+                is_main_scholar = data
+                data = {}  # 重置data为空字典
                 self.logger.info(
-                    f"使用ID {scholar_id} 获取学者数据失败，尝试使用名称 '{scholar_name}' 获取"
+                    f"直接更新学者 {scholar_name} 的状态为 {is_main_scholar}"
                 )
-                updated_data = self.crawler.search_author(scholar_name)
+            elif data and "is_main_scholar" in data:
+                is_main_scholar = data.get("is_main_scholar")
+                self.logger.info(f"从data中提取状态更新: {is_main_scholar}")
 
-            if not updated_data:
-                return {
-                    "success": False,
-                    "error": f'重新爬取学者数据失败，ID: {scholar_id}, 名称: {entity.get("name", "Unknown")}',
-                }
+            # 场景：更新状态
+            if is_main_scholar is not None:
+                # 检查状态值
+                if is_main_scholar not in [0, 1, 2]:
+                    return {
+                        "success": False,
+                        "error": f"无效的学者状态值: {is_main_scholar}，有效值为0、1或2",
+                    }
 
-            # 使用全面导入方法更新学者数据
-            result = self._import_scholar_complete(scholar_id, updated_data)
+                # 获取当前状态
+                current_status = scholar.get("is_main_scholar", 0)
 
-            if result["success"]:
-                return {
-                    "success": True,
-                    "message": f"成功更新学者数据 (ID: {scholar_id})",
-                }
-            else:
-                return {
-                    "success": False,
-                    "error": result.get("error", "更新学者数据失败"),
-                }
+                # 如果状态没有变化，直接返回成功
+                if current_status == is_main_scholar:
+                    return {
+                        "success": True,
+                        "message": f"学者状态未发生变化，保持为 {is_main_scholar}",
+                    }
+
+                # 更新学者状态
+                result = self.scholar_dao.update_scholar(
+                    scholar_id, {}, is_main_scholar
+                )
+
+                if result:
+                    status_text = {0: "关联学者", 1: "主要学者", 2: "不感兴趣"}.get(
+                        is_main_scholar, "未知状态"
+                    )
+                    return {
+                        "success": True,
+                        "message": f"已将学者标记为{status_text}",
+                    }
+                else:
+                    return {"success": False, "error": "更新学者状态失败"}
+
+            # 场景：爬取新数据并设置为主要学者
+            if data is None:
+                if not self.crawler:
+                    return {"success": False, "error": "未配置爬虫，无法获取学者数据"}
+
+                self.logger.info(f"爬取学者 {scholar_name} 的新数据并转为主要学者")
+
+                # 优先使用ID直接获取学者数据
+                updated_data = self.crawler.search_author_by_id(scholar_id)
+
+                # 如果使用ID获取失败，则尝试使用名称
+                if not updated_data:
+                    updated_data = self.crawler.search_author(scholar_name)
+
+                if not updated_data:
+                    return {"success": False, "error": f"重新爬取学者数据失败"}
+
+                # 使用完整导入方法更新学者数据，设置为主要学者(is_main_scholar=1)
+                result = self._import_scholar_complete(
+                    scholar_id, updated_data, is_main_scholar=1
+                )
+
+                if result["success"]:
+                    return {
+                        "success": True,
+                        "message": f"成功更新学者数据并设置为主要学者",
+                    }
+                else:
+                    return {"success": False, "error": result.get("error", "更新失败")}
+
+            # 如果执行到这里，说明没有特定操作，返回成功但没有变化
+            return {"success": True, "message": "学者数据未发生变化"}
 
         except Exception as e:
-            self.logger.error(f"更新学者信息时出错: {str(e)}")
+            self.logger.error(f"更新学者信息错误: {str(e)}")
+            import traceback
+
+            self.logger.error(traceback.format_exc())
             return {"success": False, "error": str(e)}
 
     def refresh_all_scholars(self, keep_custom=True):
@@ -731,29 +748,6 @@ class ScholarService:
 
         except Exception as e:
             self.logger.error(f"更新学者标签时出错: {str(e)}")
-            return {"success": False, "error": str(e)}
-
-    def convert_to_main_scholar(self, scholar_id):
-        """将学者转换为主要学者
-
-        Args:
-            scholar_id: 学者ID
-
-        Returns:
-            dict: {'success': bool, 'message': str, 'error': str}
-        """
-        try:
-            # 检查是否主要学者
-            check_query = "SELECT is_main_scholar FROM scholars WHERE scholar_id = ?"
-            result = self.scholar_dao.convert_to_main_scholar(scholar_id)
-
-            if result:
-                return {"success": True, "message": f"成功将学者转换为主要学者"}
-            else:
-                return {"success": False, "error": "转换失败，可能学者不存在"}
-
-        except Exception as e:
-            self.logger.error(f"将学者转换为主要学者时出错: {str(e)}")
             return {"success": False, "error": str(e)}
 
     def get_scholar_by_id(self, scholar_id):
@@ -970,4 +964,20 @@ class ScholarService:
             import traceback
 
             self.logger.error(traceback.format_exc())
+            return {"success": False, "error": str(e)}
+
+    def convert_to_main_scholar(self, scholar_id):
+        """将学者转换为主要学者
+
+        Args:
+            scholar_id: 学者ID
+
+        Returns:
+            dict: {'success': bool, 'message': str, 'error': str}
+        """
+        try:
+            # 直接调用更新函数，将学者设为主要学者(is_main_scholar=1)
+            return self.update_scholar(scholar_id, 1)
+        except Exception as e:
+            self.logger.error(f"将学者转换为主要学者时出错: {str(e)}")
             return {"success": False, "error": str(e)}

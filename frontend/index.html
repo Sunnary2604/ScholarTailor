@@ -25,9 +25,9 @@
         <div class="nav-actions">
           <div class="search-container">
             <input type="text" id="search-input" placeholder="搜索学者..." />
-            <button id="search-btn">搜索</button>
+            <button class="btn btn-primary" id="search-btn">搜索</button>
           </div>
-          <button id="admin-btn" class="admin-btn" title="管理面板">
+          <button id="admin-btn" class="nav-btn" title="管理面板">
             <i class="fas fa-cog"></i>
           </button>
         </div>
@@ -58,7 +58,7 @@
             <!-- 添加右下角悬浮按钮 -->
             <button
               id="add-scholar-panel-btn"
-              class="add-scholar-floating-btn"
+              class="floating-btn"
               title="添加学者与管理关系"
             >
               <i class="fas fa-plus"></i>
@@ -68,7 +68,7 @@
           <div class="detail-panel">
             <!-- 学者详情面板 -->
             <div class="panel-content">
-              <div class="basic-info">
+              <div class="basic-info card">
                 <div class="scholar-header">
                   <div class="scholar-avatar-container">
                     <img
@@ -78,27 +78,27 @@
                       onerror="this.src='https://placehold.co/300x300?text=U'; this.onerror=null;"
                     />
                   </div>
-                  <h2 id="scholar-name">选择学者查看详情</h2>
+                  <h2 id="scholar-name" class="text-title">选择学者查看详情</h2>
                 </div>
 
                 <div id="scholar-affiliation" class="info-item">
-                  <span class="label">所属机构:</span>
-                  <span class="value">-</span>
+                  <span class="label text-label">所属机构:</span>
+                  <span class="value text-description">-</span>
                 </div>
                 <div id="scholar-citations" class="info-item">
-                  <span class="label">引用次数:</span>
-                  <span class="value">-</span>
+                  <span class="label text-label">引用次数:</span>
+                  <span class="value text-description">-</span>
                 </div>
                 <div id="scholar-interests" class="info-item">
-                  <span class="label">研究方向:</span>
-                  <span class="value">-</span>
+                  <span class="label text-label">研究方向:</span>
+                  <span class="value text-description">-</span>
                 </div>
                 <div id="scholar-homepage" class="info-item">
-                  <span class="label">个人网页:</span>
-                  <span class="value">-</span>
+                  <span class="label text-label">个人网页:</span>
+                  <span class="value text-description">-</span>
                 </div>
                 <div id="scholar-tags" class="info-item">
-                  <span class="label">
+                  <span class="label text-label">
                     标签:
                     <button
                       class="tag-add-btn"
@@ -111,17 +111,32 @@
                   <div class="value scholar-tags">-</div>
                 </div>
                 <div id="scholar-custom" class="info-item">
-                  <span class="label">额外信息:</span>
+                  <span class="label text-label">额外信息:</span>
                   <div class="value custom-fields-container">
                     <div class="scholar-buttons">
-                      <button id="fetch-scholar-btn" class="scholar-button">
+                      <button
+                        id="fetch-scholar-btn"
+                        class="scholar-button fetch-button"
+                      >
                         <i class="fas fa-download"></i> 爬取详细数据
                       </button>
-                      <a href="#" id="scholar-gs-link" class="scholar-button">
+                    </div>
+                    <div class="scholar-buttons">
+                      <button
+                        id="not-interested-btn"
+                        class="scholar-button btn-warning"
+                      >
+                        <i class="fas fa-eye-slash"></i> 隐藏
+                      </button>
+                      <a
+                        href="#"
+                        id="scholar-gs-link"
+                        class="scholar-button gs-button"
+                      >
                         <i class="fas fa-graduation-cap"></i> Google Scholar
                       </a>
                     </div>
-                    <div class="custom-fields-content">
+                    <div class="custom-fields-content text-description">
                       <p>
                         这是关联学者，仅作为合作者出现。可以爬取更多详细数据。
                       </p>
@@ -131,16 +146,16 @@
               </div>
 
               <div class="publications">
-                <h3>代表性论文</h3>
-                <ul id="publication-list">
-                  <li>选择学者查看论文</li>
+                <h3 class="text-heading">代表性论文</h3>
+                <ul id="publication-list" class="list">
+                  <li class="empty-msg">选择学者查看论文</li>
                 </ul>
               </div>
 
               <div class="relationships">
-                <h3>相关学者</h3>
-                <ul id="related-scholars">
-                  <li>选择学者查看关系</li>
+                <h3 class="text-heading">相关学者</h3>
+                <ul id="related-scholars" class="list">
+                  <li class="empty-msg">选择学者查看关系</li>
                 </ul>
               </div>
             </div>
@@ -161,13 +176,13 @@
     <!-- 添加筛选面板 -->
     <div id="filter-panel" class="filter-panel">
       <div class="modal-header">
-        <h2>高级筛选</h2>
+        <h2 class="text-subtitle">高级筛选</h2>
         <span id="close-filter-panel" class="close-modal">&times;</span>
       </div>
       <div class="modal-body">
         <!-- 基本筛选部分 -->
         <div class="filter-section">
-          <h3>基本筛选</h3>
+          <h3 class="text-heading">基本筛选</h3>
           <div
             class="filter-item"
             style="
@@ -176,7 +191,7 @@
               align-items: flex-start;
             "
           >
-            <label>最小连接数:</label>
+            <label class="text-label">最小连接数:</label>
             <div class="slider-container">
               <input
                 type="range"
@@ -192,42 +207,61 @@
         </div>
 
         <div class="filter-section">
-          <h4>节点类型筛选</h4>
+          <h4 class="text-subheading">节点类型筛选</h4>
           <div class="filters-section">
             <div class="filter-item">
               <input type="checkbox" id="show-primary" checked />
-              <label for="show-primary">显示主要学者</label>
+              <label for="show-primary" class="text-label">显示主要学者</label>
             </div>
             <div class="filter-item">
               <input type="checkbox" id="show-secondary" checked />
-              <label for="show-secondary">显示关联学者</label>
+              <label for="show-secondary" class="text-label"
+                >显示关联学者</label
+              >
             </div>
           </div>
         </div>
 
         <div class="filter-section">
-          <h4>关系类型筛选</h4>
+          <h4 class="text-subheading">关系类型筛选</h4>
           <div class="filters-section">
             <div class="filter-item">
               <input type="checkbox" id="show-coauthor" checked />
-              <label for="show-coauthor">显示合作者关系</label>
+              <label for="show-coauthor" class="text-label"
+                >显示合作者关系</label
+              >
             </div>
             <div class="filter-item">
               <input type="checkbox" id="show-advisor" checked />
-              <label for="show-advisor">显示导师关系</label>
+              <label for="show-advisor" class="text-label">显示导师关系</label>
             </div>
             <div class="filter-item">
               <input type="checkbox" id="show-colleague" checked />
-              <label for="show-colleague">显示同事关系</label>
+              <label for="show-colleague" class="text-label"
+                >显示同事关系</label
+              >
             </div>
           </div>
         </div>
 
         <hr class="filter-divider" />
 
+        <!-- 高级选项 -->
+        <div class="filter-section">
+          <h3 class="text-heading">高级选项</h3>
+          <div class="filters-section">
+            <div class="filter-item">
+              <input type="checkbox" id="hide-not-interested" checked />
+              <label for="hide-not-interested" class="text-label"
+                >隐藏不感兴趣的学者</label
+              >
+            </div>
+          </div>
+        </div>
+
         <!-- 自定义筛选部分 -->
         <div class="filter-section">
-          <h3>自定义筛选条件</h3>
+          <h3 class="text-heading">自定义筛选条件</h3>
           <div id="custom-filters-container">
             <!-- 这里将动态添加筛选条件 -->
           </div>
@@ -253,24 +287,32 @@
         <span class="tag-dialog-close">&times;</span>
       </div>
       <div class="tag-dialog-body">
-        <h4>预定义标签</h4>
+        <h4 class="text-subheading">预定义标签</h4>
         <div class="predefined-tags">
-          <button class="scholar-tag" data-tag="SameField">SameField</button>
-          <button class="scholar-tag" data-tag="Interested">Interested</button>
-          <button class="scholar-tag" data-tag="HighImpact">HighImpact</button>
+          <button class="tag scholar-tag" data-tag="SameField">
+            SameField
+          </button>
+          <button class="tag scholar-tag" data-tag="Interested">
+            Interested
+          </button>
+          <button class="tag scholar-tag" data-tag="HighImpact">
+            HighImpact
+          </button>
         </div>
 
-        <h4>添加自定义标签</h4>
+        <h4 class="text-subheading">添加自定义标签</h4>
         <div class="add-custom-tag">
           <input
             type="text"
             id="custom-tag-input"
             placeholder="输入自定义标签..."
           />
-          <button id="add-custom-tag-btn" class="btn">添加</button>
+          <button id="add-custom-tag-btn" class="btn btn-primary btn-sm">
+            添加
+          </button>
         </div>
 
-        <h4>当前标签</h4>
+        <h4 class="text-subheading">当前标签</h4>
         <div id="current-tags" class="scholar-tags">
           <!-- 当前标签将在这里显示 -->
         </div>
@@ -285,7 +327,7 @@
     <div id="admin-modal" class="modal">
       <div class="modal-content">
         <div class="modal-header">
-          <h2>管理面板</h2>
+          <h2 class="text-subtitle">管理面板</h2>
           <span class="close-modal">&times;</span>
         </div>
         <div class="modal-body">
@@ -300,8 +342,8 @@
 
           <div id="tab-scholars" class="tab-content active">
             <div class="section-header">
-              <h3>学者数据管理</h3>
-              <span class="last-update"
+              <h3 class="text-heading">学者数据管理</h3>
+              <span class="last-update text-description"
                 >上次更新: <span id="last-update-time">未知</span></span
               >
             </div>
@@ -312,12 +354,14 @@
               </button>
               <div class="checkbox-wrap">
                 <input type="checkbox" id="keep-custom" checked />
-                <label for="keep-custom">保留自定义关系</label>
+                <label for="keep-custom" class="text-label"
+                  >保留自定义关系</label
+                >
               </div>
             </div>
 
             <div class="scholar-list-section">
-              <h4>现有学者列表</h4>
+              <h4 class="text-subheading">现有学者列表</h4>
               <div class="search-list-container">
                 <input
                   type="text"
@@ -325,12 +369,12 @@
                   placeholder="搜索学者列表..."
                 />
                 <div class="scholar-list" id="scholar-list">
-                  <div class="loading">加载中...</div>
+                  <div class="loading text-description">加载中...</div>
                 </div>
               </div>
             </div>
             <div class="init-database">
-              <button id="init-db-btn" class="btn btn-danger">
+              <button id="init-db-btn" class="btn btn-warning">
                 初始化数据库
               </button>
               <div class="warning-text">
@@ -339,7 +383,7 @@
             </div>
 
             <div class="migrate-data">
-              <button id="migrate-data-btn" class="btn btn-danger">
+              <button id="migrate-data-btn" class="btn btn-warning">
                 清空并重新导入数据
               </button>
               <div class="warning-text">
@@ -350,12 +394,15 @@
 
           <div id="tab-relationships" class="tab-content">
             <div class="section-header">
-              <h3>关系管理</h3>
+              <h3 class="text-heading">关系管理</h3>
             </div>
 
             <div class="relationship-management">
               <!-- 移除重复的关系添加部分，保留在add-scholar-modal中 -->
-              <p class="hint-text" style="text-align: center; margin: 20px 0">
+              <p
+                class="hint-text text-description"
+                style="text-align: center; margin: 20px 0"
+              >
                 关系管理功能已移至添加面板，请使用页面右下角的 + 按钮进入
               </p>
             </div>
@@ -375,30 +422,26 @@
     <div id="add-scholar-modal" class="modal">
       <div class="modal-content">
         <div class="modal-header">
-          <h2>添加与管理</h2>
+          <h2 class="text-subtitle">添加与管理</h2>
           <span class="close-modal" id="close-add-scholar-modal">&times;</span>
         </div>
         <div class="modal-body">
           <!-- 选项卡导航 -->
-          <div class="add-manage-tabs">
-            <button class="tab-button active" data-tab="scholars">
-              添加学者
-            </button>
-            <button class="tab-button" data-tab="relationships">
-              管理关系
-            </button>
+          <div class="tabs">
+            <button class="tab-btn active" data-tab="scholars">添加学者</button>
+            <button class="tab-btn" data-tab="relationships">管理关系</button>
           </div>
 
           <!-- 添加学者选项卡 -->
-          <div id="add-scholars-tab" class="tab-panel active">
+          <div id="add-scholars-tab" class="tab-content active">
             <div class="section-header">
-              <h3>添加单个学者</h3>
+              <h3 class="text-heading">添加单个学者</h3>
             </div>
 
             <div class="scholar-add">
               <div>
                 <div class="form-group">
-                  <label>学者名称:</label>
+                  <label class="text-label">学者名称:</label>
                   <input
                     type="text"
                     id="add-scholar-input"
@@ -406,7 +449,7 @@
                   />
                 </div>
                 <div class="form-group">
-                  <label>Scholar ID 或页面链接:</label>
+                  <label class="text-label">Scholar ID 或页面链接:</label>
                   <input
                     type="text"
                     id="add-scholar-id"
@@ -417,11 +460,13 @@
                   </div>
                 </div>
               </div>
-              <button id="add-new-scholar-btn" class="btn">爬取学者</button>
+              <button id="add-new-scholar-btn" class="btn btn-primary">
+                爬取学者
+              </button>
             </div>
 
-            <div class="scholar-batch">
-              <h3>批量添加学者</h3>
+            <div class="scholar-batch card">
+              <h3 class="text-subheading">批量添加学者</h3>
               <textarea
                 id="add-batch-scholars"
                 placeholder="批量添加多位学者，每行一个 Google Scholar ID 或页面链接或学者名称..."
@@ -430,19 +475,21 @@
                 推荐使用Scholar
                 ID或页面链接，可避免重名问题。每行输入一个，系统会自动识别ID和名称
               </div>
-              <button id="add-batch-scholars-btn" class="btn">批量爬取</button>
+              <button id="add-batch-scholars-btn" class="btn btn-primary">
+                批量爬取
+              </button>
             </div>
           </div>
 
           <!-- 管理关系选项卡 -->
-          <div id="manage-relationships-tab" class="tab-panel">
+          <div id="manage-relationships-tab" class="tab-content">
             <div class="section-header">
-              <h3>关系管理</h3>
+              <h3 class="text-heading">关系管理</h3>
             </div>
 
             <div class="relationship-add">
               <div class="form-group">
-                <label>源学者:</label>
+                <label class="text-label">源学者:</label>
                 <div class="searchable-select">
                   <input
                     type="text"
@@ -456,7 +503,7 @@
                 </div>
               </div>
               <div class="form-group">
-                <label>关系类型:</label>
+                <label class="text-label">关系类型:</label>
                 <select id="relation-type">
                   <option value="coauthor">合作者</option>
                   <option value="advisor">导师</option>
@@ -464,7 +511,7 @@
                 </select>
               </div>
               <div class="form-group">
-                <label>目标学者:</label>
+                <label class="text-label">目标学者:</label>
                 <div class="searchable-select">
                   <input
                     type="text"
@@ -477,18 +524,22 @@
                   <input type="hidden" id="target-scholar-value" />
                 </div>
               </div>
-              <button id="add-relation-btn" class="btn">添加关系</button>
+              <button id="add-relation-btn" class="btn btn-primary">
+                添加关系
+              </button>
             </div>
 
             <!-- 提示说明 -->
-            <div class="hint-text" style="margin-top: 20px; text-align: center">
+            <div
+              class="hint-text text-description"
+              style="margin-top: 20px; text-align: center"
+            >
               添加后的关系会立即显示在图谱中
             </div>
           </div>
         </div>
         <div class="modal-footer">
           <div class="status-message" id="add-scholar-status"></div>
-          <button id="close-add-scholar-btn" class="btn">关闭</button>
         </div>
       </div>
     </div>

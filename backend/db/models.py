@@ -22,7 +22,7 @@ CREATE TABLE IF NOT EXISTS scholars (
     public_access_available INTEGER DEFAULT 0,
     public_access_unavailable INTEGER DEFAULT 0,
     last_updated TIMESTAMP,
-    is_main_scholar BOOLEAN DEFAULT 0
+    is_main_scholar INTEGER DEFAULT 0
 );
 
 -- 论文表 - 使用cites_id作为主键
@@ -132,18 +132,21 @@ CREATE TABLE IF NOT EXISTS db_version (
 INSERT OR IGNORE INTO db_version (version, description) VALUES (1, 'Initial schema');
 """
 
+
 # 数据库初始化函数
 def init_db(db_manager):
     """初始化数据库表结构"""
     db_manager.execute_script(SCHEMA_SQL)
     db_manager.execute_script(VERSION_SQL)
     db_manager.commit()
-    
+
     # 检查当前版本
-    cursor = db_manager.execute("SELECT MAX(version) as current_version FROM db_version")
+    cursor = db_manager.execute(
+        "SELECT MAX(version) as current_version FROM db_version"
+    )
     result = cursor.fetchone()
-    current_version = result.get('current_version', 0) if result else 0
-    
+    current_version = result.get("current_version", 0) if result else 0
+
     # 根据版本号执行升级脚本
     if current_version < 2:
         # 添加is_main_scholar字段的升级脚本
@@ -151,37 +154,47 @@ def init_db(db_manager):
             # 检查字段是否已存在
             cursor = db_manager.execute("PRAGMA table_info(scholars)")
             columns = cursor.fetchall()
-            has_is_main_scholar = any(col['name'] == 'is_main_scholar' for col in columns)
-            
+            has_is_main_scholar = any(
+                col["name"] == "is_main_scholar" for col in columns
+            )
+
             if not has_is_main_scholar:
                 print("添加 is_main_scholar 字段到 scholars 表...")
-                db_manager.execute("ALTER TABLE scholars ADD COLUMN is_main_scholar BOOLEAN DEFAULT 0")
-                
+                db_manager.execute(
+                    "ALTER TABLE scholars ADD COLUMN is_main_scholar INTEGER DEFAULT 0"
+                )
+
                 # 将所有现有学者标记为主要学者
                 # 假设直接存在data/scholars目录下的JSON文件对应的学者为主要学者
-                db_manager.execute("""
+                db_manager.execute(
+                    """
                 UPDATE scholars 
                 SET is_main_scholar = 1 
                 WHERE scholar_id IN (
                     SELECT id FROM entities WHERE type = 'scholar'
                 )
-                """)
-                
-                db_manager.execute("INSERT INTO db_version (version, description) VALUES (2, 'Added is_main_scholar field')")
+                """
+                )
+
+                db_manager.execute(
+                    "INSERT INTO db_version (version, description) VALUES (2, 'Added is_main_scholar field')"
+                )
                 db_manager.commit()
                 print("数据库升级完成：已添加 is_main_scholar 字段")
         except Exception as e:
             print(f"数据库升级失败: {str(e)}")
             db_manager.rollback()
-    
+
     if current_version < 3:
         try:
             print("数据库架构更新: 重新设计tables")
-            db_manager.execute("INSERT INTO db_version (version, description) VALUES (3, 'Redesigned schema with cites_id as primary key')")
+            db_manager.execute(
+                "INSERT INTO db_version (version, description) VALUES (3, 'Redesigned schema with cites_id as primary key')"
+            )
             db_manager.commit()
             print("数据库升级完成：更新了表结构")
         except Exception as e:
             print(f"数据库升级失败: {str(e)}")
             db_manager.rollback()
-        
-    return current_version 
+
+    return current_version

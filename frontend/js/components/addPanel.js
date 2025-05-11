@@ -23,15 +23,15 @@ const state = {
 const elements = {
   modal: () => document.getElementById("add-scholar-modal"),
   closeBtn: () => document.getElementById("close-add-scholar-modal"),
-  closeFooterBtn: () => document.getElementById("close-add-scholar-btn"),
   addScholarBtn: () => document.getElementById("add-new-scholar-btn"),
   batchAddBtn: () => document.getElementById("add-batch-scholars-btn"),
   nameInput: () => document.getElementById("add-scholar-input"),
   idInput: () => document.getElementById("add-scholar-id"),
   batchInput: () => document.getElementById("add-batch-scholars"),
   statusMsg: () => document.getElementById("add-scholar-status"),
-  tabButtons: () => document.querySelectorAll(".add-manage-tabs .tab-button"),
-  tabPanels: () => document.querySelectorAll(".tab-panel"),
+  tabButtons: () =>
+    document.querySelectorAll("#add-scholar-modal .tabs .tab-btn"),
+  tabPanels: () => document.querySelectorAll(".tab-content"),
   scholarsTab: () => document.getElementById("add-scholars-tab"),
   relationshipsTab: () => document.getElementById("manage-relationships-tab"),
   sourceInput: () => document.getElementById("source-scholar-input"),
@@ -72,39 +72,52 @@ function render() {
   // 更新面板可见性
   if (state.isVisible) {
     modal.style.display = "block";
+    // 面板显示时确保更新标签，但使用setTimeout避免争用问题
+    setTimeout(() => {
+      updateActiveTab();
+    }, 50);
   } else {
     modal.style.display = "none";
   }
-
-  // 更新活跃选项卡
-  updateActiveTab();
 }
 
 /**
  * 更新活跃选项卡
  */
 function updateActiveTab() {
-  const tabButtons = elements.tabButtons();
-  const tabPanels = elements.tabPanels();
-  const scholarsTab = elements.scholarsTab();
-  const relationshipsTab = elements.relationshipsTab();
+  // 注意：只选择添加面板模态窗口内的元素
+  const modal = document.getElementById("add-scholar-modal");
+  if (!modal) return;
+
+  const tabButtons = modal.querySelectorAll(".tabs .tab-btn");
+  const scholarsTab = document.getElementById("add-scholars-tab");
+  const relationshipsTab = document.getElementById("manage-relationships-tab");
+
+  console.log("当前活动标签:", state.activeTab);
+  console.log("找到的标签按钮数量:", tabButtons.length);
 
   // 更新选项卡按钮状态
   tabButtons.forEach((btn) => {
-    if (btn.getAttribute("data-tab") === state.activeTab) {
+    const tabName = btn.getAttribute("data-tab");
+    console.log("按钮标签名:", tabName);
+    if (tabName === state.activeTab) {
       btn.classList.add("active");
     } else {
       btn.classList.remove("active");
     }
   });
 
-  // 更新选项卡面板显示
-  tabPanels.forEach((panel) => panel.classList.remove("active"));
+  // 隐藏所有标签内容
+  if (scholarsTab) scholarsTab.classList.remove("active");
+  if (relationshipsTab) relationshipsTab.classList.remove("active");
 
+  // 显示当前活动标签内容
   if (state.activeTab === "scholars" && scholarsTab) {
     scholarsTab.classList.add("active");
+    console.log("显示学者标签内容");
   } else if (state.activeTab === "relationships" && relationshipsTab) {
     relationshipsTab.classList.add("active");
+    console.log("显示关系标签内容，加载关系数据");
     // 加载关系数据
     loadRelationshipData();
   }
@@ -181,14 +194,23 @@ function loadRelationshipData() {
  * 设置选项卡切换功能
  */
 function setupTabSwitching() {
-  const tabButtons = elements.tabButtons();
+  const modal = document.getElementById("add-scholar-modal");
+  if (!modal) {
+    console.error("无法找到添加学者模态窗口");
+    return;
+  }
+
+  const tabButtons = modal.querySelectorAll(".tabs .tab-btn");
+  console.log("setupTabSwitching: 找到标签按钮数量", tabButtons.length);
 
   tabButtons.forEach((button) => {
-    button.addEventListener("click", function () {
+    button.addEventListener("click", function (e) {
+      e.preventDefault();
       const tabName = this.getAttribute("data-tab");
+      console.log("标签切换: 点击了", tabName);
       if (tabName) {
         state.activeTab = tabName;
-        render();
+        updateActiveTab();
       }
     });
   });
@@ -465,11 +487,9 @@ async function handleAddRelationship() {
 function setupEventListeners() {
   const modal = elements.modal();
   const closeBtn = elements.closeBtn();
-  const closeFooterBtn = elements.closeFooterBtn();
   const addScholarBtn = elements.addScholarBtn();
   const batchAddBtn = elements.batchAddBtn();
   const addRelationBtn = elements.addRelationBtn();
-  const tabButtons = elements.tabButtons();
   const panelTriggerBtn = elements.panelTriggerBtn();
 
   if (!modal) return;
@@ -481,14 +501,11 @@ function setupEventListeners() {
     });
   }
 
-  // 关闭按钮
+  // 右上角关闭按钮
   if (closeBtn) {
-    closeBtn.addEventListener("click", hide);
-  }
-
-  // 底部关闭按钮
-  if (closeFooterBtn) {
-    closeFooterBtn.addEventListener("click", hide);
+    closeBtn.addEventListener("click", () => {
+      hide();
+    });
   }
 
   // 点击模态框背景关闭
@@ -516,12 +533,19 @@ function setupEventListeners() {
   }
 
   // 选项卡切换
-  if (tabButtons) {
-    tabButtons.forEach((btn) => {
-      btn.addEventListener("click", () => {
+  const tabBtns = document.querySelectorAll(
+    "#add-scholar-modal .tabs .tab-btn"
+  );
+  if (tabBtns && tabBtns.length > 0) {
+    console.log("找到标签按钮，正在绑定点击事件", tabBtns.length);
+    tabBtns.forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.preventDefault();
         const tabName = btn.getAttribute("data-tab");
+        console.log("点击标签按钮:", tabName);
         if (tabName) {
           state.activeTab = tabName;
+          // 直接调用updateActiveTab而不是render，这样更直接针对标签切换
           updateActiveTab();
         }
       });
@@ -563,6 +587,11 @@ export default {
   // 初始化组件
   init() {
     setupEventListeners();
+    // 单独设置标签切换功能
+    setTimeout(() => {
+      setupTabSwitching();
+      console.log("标签切换功能已初始化");
+    }, 100); // 延迟一点以确保DOM元素已加载
     return this;
   },
 

@@ -10,61 +10,60 @@ from db.db_manager import DBManager
 
 class InterestDao:
     """兴趣标签数据访问对象"""
-    
+
     def __init__(self):
         """初始化DAO"""
         self.db_manager = DBManager()
         self.logger = logging.getLogger(__name__)
-    
+
     def create_interest(self, entity_id, interest, is_custom=False):
         """创建实体兴趣标签
-        
+
         Args:
             entity_id: 实体ID
             interest: 兴趣标签
             is_custom: 是否为自定义标签，用于区分自定义标签和系统生成的兴趣标签
-            
+
         Returns:
             bool: 是否成功创建
         """
         try:
-            # 检查是否已存在
-            if self.interest_exists(entity_id, interest):
-                # 更新is_custom字段
-                query = """
-                UPDATE interests 
-                SET is_custom = ? 
-                WHERE entity_id = ? AND interest = ?
-                """
-                self.db_manager.execute(
-                    query, (1 if is_custom else 0, entity_id, interest)
+            # 使用INSERT OR REPLACE替代检查然后插入或更新的逻辑
+            # 这样可以避免唯一约束冲突
+            query = """
+            INSERT OR REPLACE INTO interests (entity_id, interest, is_custom)
+            VALUES (?, ?, ?)
+            """
+            self.db_manager.execute(query, (entity_id, interest, 1 if is_custom else 0))
+
+            # 确保提交事务
+            try:
+                self.db_manager.commit()
+            except Exception as commit_error:
+                self.logger.warning(
+                    f"提交事务时出现警告（可能无活动事务）: {str(commit_error)}"
                 )
-            else:
-                # 创建新兴趣标签
-                query = """
-                INSERT INTO interests (entity_id, interest, is_custom)
-                VALUES (?, ?, ?)
-                """
-                self.db_manager.execute(
-                    query, (entity_id, interest, 1 if is_custom else 0)
-                )
-            
-            self.db_manager.commit()
+                # 这里不需要回滚，因为如果没有活动事务，尝试回滚也会失败
+
             return True
-            
+
         except Exception as e:
             self.logger.error(f"创建兴趣标签时出错: {str(e)}")
-            self.db_manager.rollback()
+            # 尝试回滚，但如果没有活动事务则忽略错误
+            try:
+                self.db_manager.rollback()
+            except Exception:
+                pass
             return False
-    
+
     def create_interests_batch(self, entity_id, interests, is_custom=False):
         """批量创建实体兴趣标签
-        
+
         Args:
             entity_id: 实体ID
             interests: 兴趣标签列表
             is_custom: 是否为自定义标签
-            
+
         Returns:
             bool: 是否成功创建
         """
@@ -83,12 +82,25 @@ class InterestDao:
             """
 
             self.db_manager.executemany(query, params)
-            self.db_manager.commit()
+
+            # 确保提交事务
+            try:
+                self.db_manager.commit()
+            except Exception as commit_error:
+                self.logger.warning(
+                    f"提交事务时出现警告（可能无活动事务）: {str(commit_error)}"
+                )
+                # 这里不需要回滚，因为如果没有活动事务，尝试回滚也会失败
+
             return True
 
         except Exception as e:
             self.logger.error(f"批量创建兴趣标签时出错: {str(e)}")
-            self.db_manager.rollback()
+            # 尝试回滚，但如果没有活动事务则忽略错误
+            try:
+                self.db_manager.rollback()
+            except Exception:
+                pass
             return False
 
     def interest_exists(self, entity_id, interest):
@@ -112,13 +124,13 @@ class InterestDao:
         except Exception as e:
             self.logger.error(f"检查兴趣标签是否存在时出错: {str(e)}")
             return False
-    
+
     def get_entity_interests(self, entity_id):
         """获取实体的所有兴趣标签
-        
+
         Args:
             entity_id: 实体ID
-            
+
         Returns:
             list: 兴趣标签列表，包含is_custom字段区分自定义标签
         """
@@ -148,10 +160,10 @@ class InterestDao:
 
     def get_all_interests(self, is_custom=None):
         """获取所有兴趣标签
-        
+
         Args:
             is_custom: 筛选条件，None表示获取全部，True只获取自定义标签，False只获取系统标签
-            
+
         Returns:
             list: 兴趣标签列表
         """
@@ -168,14 +180,14 @@ class InterestDao:
         except Exception as e:
             self.logger.error(f"获取所有兴趣标签时出错: {str(e)}")
             return []
-    
+
     def delete_interest(self, entity_id, interest):
         """删除实体兴趣标签
-        
+
         Args:
             entity_id: 实体ID
             interest: 兴趣标签
-            
+
         Returns:
             bool: 是否成功删除
         """
@@ -185,21 +197,34 @@ class InterestDao:
             WHERE entity_id = ? AND interest = ?
             """
             self.db_manager.execute(query, (entity_id, interest))
-            self.db_manager.commit()
+
+            # 确保提交事务
+            try:
+                self.db_manager.commit()
+            except Exception as commit_error:
+                self.logger.warning(
+                    f"提交事务时出现警告（可能无活动事务）: {str(commit_error)}"
+                )
+                # 这里不需要回滚，因为如果没有活动事务，尝试回滚也会失败
+
             return True
-            
+
         except Exception as e:
             self.logger.error(f"删除兴趣标签时出错: {str(e)}")
-            self.db_manager.rollback()
+            # 尝试回滚，但如果没有活动事务则忽略错误
+            try:
+                self.db_manager.rollback()
+            except Exception:
+                pass
             return False
-    
+
     def delete_entity_interests(self, entity_id, is_custom=None):
         """删除实体所有兴趣标签
-        
+
         Args:
             entity_id: 实体ID
             is_custom: 筛选条件，None表示删除全部，True只删除自定义标签，False只删除系统标签
-            
+
         Returns:
             bool: 是否成功删除
         """
@@ -211,10 +236,22 @@ class InterestDao:
                 query = "DELETE FROM interests WHERE entity_id = ? AND is_custom = ?"
                 self.db_manager.execute(query, (entity_id, 1 if is_custom else 0))
 
-            self.db_manager.commit()
+            # 确保提交事务
+            try:
+                self.db_manager.commit()
+            except Exception as commit_error:
+                self.logger.warning(
+                    f"提交事务时出现警告（可能无活动事务）: {str(commit_error)}"
+                )
+                # 这里不需要回滚，因为如果没有活动事务，尝试回滚也会失败
+
             return True
-            
+
         except Exception as e:
             self.logger.error(f"删除实体兴趣标签时出错: {str(e)}")
-            self.db_manager.rollback()
-            return False 
+            # 尝试回滚，但如果没有活动事务则忽略错误
+            try:
+                self.db_manager.rollback()
+            except Exception:
+                pass
+            return False

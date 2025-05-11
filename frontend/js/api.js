@@ -198,11 +198,40 @@ export async function batchAddScholars(scholars) {
  * @param {string} scholarId - 学者ID
  * @param {Object} [data] - 更新后的学者数据（可选）
  * @returns {Promise<Object>} 更新结果
+ * @description 支持的学者状态：
+ *   - is_main_scholar = 0: 关联学者
+ *   - is_main_scholar = 1: 主要学者
+ *   - is_main_scholar = 2: 不感兴趣的学者（将被隐藏）
  */
 export async function updateScholar(scholarId, data = null) {
   try {
+    console.log(
+      `DEBUGTAG: 开始updateScholar - scholarId=${scholarId}, data=`,
+      data
+    );
+
     // 确保data中包含学者ID
     const requestData = data ? { ...data, id: scholarId } : { id: scholarId };
+    console.log(`DEBUGTAG: 构建请求数据 - requestData=`, requestData);
+
+    // 记录is_main_scholar的状态，便于追踪
+    if (requestData.is_main_scholar !== undefined) {
+      const statusText =
+        {
+          0: "关联学者",
+          1: "主要学者",
+          2: "不感兴趣",
+        }[requestData.is_main_scholar] || "未知状态";
+
+      console.log(
+        `DEBUGTAG: 更新学者[${scholarId}]状态为: ${requestData.is_main_scholar} (${statusText})`
+      );
+    }
+
+    // 打印完整请求内容
+    console.log(`DEBUGTAG: 发送POST请求 - ${API_BASE_URL}/scholars/update`);
+    console.log(`DEBUGTAG: 请求体 - ${JSON.stringify(requestData)}`);
+
     const response = await fetch(`${API_BASE_URL}/scholars/update`, {
       method: "POST",
       headers: {
@@ -211,13 +240,19 @@ export async function updateScholar(scholarId, data = null) {
       body: JSON.stringify(requestData),
     });
 
+    console.log(`DEBUGTAG: 收到响应 - status=${response.status}`);
+
     if (!response.ok) {
+      console.error(`DEBUGTAG: HTTP错误: ${response.status}`);
       throw new Error(`HTTP错误: ${response.status}`);
     }
 
-    return await response.json();
+    const result = await response.json();
+    console.log(`DEBUGTAG: 响应内容 - `, result);
+
+    return result;
   } catch (error) {
-    console.error("更新学者数据失败:", error);
+    console.error(`DEBUGTAG: 更新学者数据失败:`, error);
     throw error;
   }
 }

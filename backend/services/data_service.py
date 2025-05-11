@@ -178,8 +178,11 @@ class DataService:
             self.logger.error(f"重新生成网络数据时出错: {str(e)}")
             return {"success": False, "error": str(e)}
 
-    def get_network_data(self):
+    def get_network_data(self, hide_not_interested=True):
         """从数据库获取网络数据
+
+        Args:
+            hide_not_interested: 是否隐藏不感兴趣的学者，默认为True
 
         Returns:
             dict: {'success': bool, 'data': dict, 'error': str}
@@ -187,7 +190,7 @@ class DataService:
         """
         try:
             # 直接从数据库获取数据，而不是生成文件
-            data = self.generate_data()
+            data = self.generate_data(hide_not_interested=hide_not_interested)
 
             return {"success": True, "data": data}
 
@@ -195,14 +198,39 @@ class DataService:
             self.logger.error(f"获取网络数据时出错: {str(e)}")
             return {"success": False, "error": str(e)}
 
-    def generate_data(self):
-        """生成网络数据"""
+    def generate_data(self, hide_not_interested=True):
+        """生成网络数据
+
+        Args:
+            hide_not_interested: 是否隐藏不感兴趣的学者，默认为True
+
+        Returns:
+            dict: 包含nodes和edges的网络数据
+        """
         try:
+            # 创建缓存字典，记录学者是否不感兴趣
+            not_interested_scholars = {}
+
             # 获取所有主要学者
             main_scholars = self.scholar_dao.get_main_scholars()
             if not main_scholars:
                 self.logger.warning("未找到任何主要学者数据")
                 return {"success": False, "error": "未找到任何主要学者数据"}
+
+            # 过滤掉不感兴趣的学者（如果需要）
+            filtered_scholars = []
+            for scholar in main_scholars:
+                if hide_not_interested and scholar.get("is_main_scholar") == 2:
+                    self.logger.info(f"跳过不感兴趣学者: {scholar['scholar_id']}")
+                    not_interested_scholars[scholar["scholar_id"]] = True
+                    continue
+                filtered_scholars.append(scholar)
+
+            if not filtered_scholars:
+                self.logger.warning("过滤后没有任何主要学者数据")
+                return {"success": False, "error": "过滤后没有任何主要学者数据"}
+
+            main_scholars = filtered_scholars
 
             # 生成主要学者节点列表
             nodes = []
@@ -324,6 +352,31 @@ class DataService:
 
                         # 如果不是主要学者，记录其连接数
                         if target_id not in main_scholar_ids:
+                            # 检查目标学者是否是不感兴趣的学者（从缓存中检查）
+                            if (
+                                hide_not_interested
+                                and target_id in not_interested_scholars
+                            ):
+                                self.logger.info(
+                                    f"跳过与已知不感兴趣学者 {target_id} 的关系"
+                                )
+                                continue
+
+                            # 如果缓存中没有，则查询数据库
+                            target_scholar = self.scholar_dao.get_scholar_by_id(
+                                target_id
+                            )
+                            if (
+                                hide_not_interested
+                                and target_scholar
+                                and target_scholar.get("is_main_scholar") == 2
+                            ):
+                                self.logger.info(
+                                    f"跳过与不感兴趣学者 {target_id} 的关系"
+                                )
+                                not_interested_scholars[target_id] = True
+                                continue
+
                             if target_id not in secondary_scholar_connections:
                                 secondary_scholar_connections[target_id] = 0
                             secondary_scholar_connections[target_id] += 1
@@ -383,11 +436,23 @@ class DataService:
             # 获取并添加有意义的关联学者节点
             for scholar_id in significant_secondary_scholars.keys():
                 try:
+                    # 首先检查缓存，如果是已知的不感兴趣学者，直接跳过
+                    if hide_not_interested and scholar_id in not_interested_scholars:
+                        self.logger.info(f"跳过已知不感兴趣的关联学者: {scholar_id}")
+                        continue
+
                     # 获取学者数据
                     scholar = self.scholar_dao.get_scholar_by_id(scholar_id)
                     if not scholar:
                         self.logger.warning(f"未找到关联学者 {scholar_id} 的数据")
                         continue
+
+                    # 如果需要隐藏不感兴趣的学者，并且该学者被标记为不感兴趣，则跳过
+                    if hide_not_interested and scholar.get("is_main_scholar") == 2:
+                        self.logger.info(f"筛选结果中跳过不感兴趣的学者: {scholar_id}")
+                        continue
+                    elif scholar.get("is_main_scholar") == 2:
+                        self.logger.info(f"显示不感兴趣的学者: {scholar_id}")
 
                     # 获取实体信息
                     entity = self.entity_dao.get_entity_by_id(scholar_id)
@@ -398,7 +463,13 @@ class DataService:
                         continue
 
                     # 获取学者兴趣标签
-                    interests = self.interest_dao.get_entity_interests(scholar_id)
+                    try:
+                        interests = self.interest_dao.get_entity_interests(scholar_id)
+                    except Exception as e:
+                        self.logger.warning(
+                            f"获取学者ID {scholar_id} 的兴趣标签时出错: {str(e)}"
+                        )
+                        interests = []
 
                     # 创建关联学者节点
                     node = {
@@ -484,12 +555,34 @@ class DataService:
                   data格式包含nodes和edges
         """
         try:
+            import traceback
+
             self.logger.info(f"开始构建筛选查询，参数: {filter_params}")
 
             # 检查filter_params类型
             if not isinstance(filter_params, dict):
                 self.logger.error(f"filter_params不是字典类型: {type(filter_params)}")
                 return {"success": False, "error": "筛选参数必须是字典"}
+
+            # 获取hideNotInterested参数
+            hide_not_interested = filter_params.get("hideNotInterested", True)
+            # 确保hide_not_interested是布尔值
+            if not isinstance(hide_not_interested, bool):
+                if isinstance(hide_not_interested, str):
+                    hide_not_interested = hide_not_interested.lower() == "true"
+                else:
+                    hide_not_interested = bool(hide_not_interested)
+                filter_params["hideNotInterested"] = hide_not_interested
+
+            self.logger.info(
+                f"【重要】使用hide_not_interested值: {hide_not_interested}，类型: {type(hide_not_interested)}"
+            )
+            self.logger.info(
+                f"【重要】筛选参数中hideNotInterested: {filter_params.get('hideNotInterested')}"
+            )
+            print(
+                f"【调试点1】filter_network_data接收到hideNotInterested={hide_not_interested}，类型: {type(hide_not_interested)}"
+            )
 
             # 构建动态SQL查询
             sql_parts = self._build_filter_sql(filter_params)
@@ -516,7 +609,8 @@ class DataService:
 
             # 获取符合筛选条件的学者ID列表
             try:
-                scholar_ids = self._execute_filter_query(sql_parts)
+                # 将hideNotInterested参数传递给_execute_filter_query方法
+                scholar_ids = self._execute_filter_query(sql_parts, hide_not_interested)
             except Exception as e:
                 self.logger.error(f"执行查询时出错: {str(e)}")
                 return {"success": False, "error": f"执行筛选查询时出错: {str(e)}"}
@@ -532,6 +626,13 @@ class DataService:
 
             # 生成筛选后的网络数据
             try:
+                # 将hideNotInterested参数传递给_generate_filtered_network_data方法
+                # 注意：这里使用的参数名称应该和_generate_filtered_network_data函数的参数命名一致
+                # 问题可能出在这里 - 将hideNotInterested参数转换为hide_not_interested
+                filter_params["hide_not_interested"] = hide_not_interested
+                print(
+                    f"【调试点6】传递给_generate_filtered_network_data的参数: hide_not_interested={hide_not_interested}"
+                )
                 data = self._generate_filtered_network_data(scholar_ids, filter_params)
             except Exception as e:
                 self.logger.error(f"生成筛选网络数据时出错: {str(e)}")
@@ -540,6 +641,7 @@ class DataService:
             node_count = len(data.get("nodes", []))
             edge_count = len(data.get("edges", []))
             self.logger.info(f"筛选完成，生成 {node_count} 个节点，{edge_count} 条边")
+            print(f"【调试点7】筛选结果统计: 节点数={node_count}, 边数={edge_count}")
 
             return {"success": True, "data": data}
 
@@ -584,6 +686,22 @@ class DataService:
                 "order": "ORDER BY s.citedby DESC",
                 "params": [],
             }
+
+            # 添加对hideNotInterested参数的支持
+            # 明确检查hideNotInterested是否为True，而不是仅检查它是否存在
+            hide_not_interested = filter_params.get("hideNotInterested")
+            print(
+                f"【调试点2】_build_filter_sql收到hideNotInterested={hide_not_interested}，类型: {type(hide_not_interested)}"
+            )
+            if hide_not_interested is True:
+                sql_parts["where"].append(
+                    "(s.is_main_scholar != 2 OR s.is_main_scholar IS NULL)"
+                )
+                self.logger.info(
+                    "【重要】添加筛选条件：隐藏不感兴趣的学者 (is_main_scholar != 2)"
+                )
+            else:
+                self.logger.info("【重要】不隐藏不感兴趣的学者，显示所有学者")
 
             # 学者属性筛选
             if filter_params.get("interestKeyword"):
@@ -829,11 +947,30 @@ class DataService:
                 "params": [],
             }
 
-    def _execute_filter_query(self, sql_parts):
+    def _should_show_all_scholars(self, hide_not_interested):
+        """
+        确定是否应该显示所有学者，包括不感兴趣的学者。
+        基于hideNotInterested参数的值进行判断。
+
+        Args:
+            hide_not_interested: 是否隐藏不感兴趣的学者
+
+        Returns:
+            bool: 是否显示所有学者（返回True表示显示，False表示不显示）
+        """
+        # 如果不隐藏不感兴趣的学者（即hide_not_interested为False），则返回True
+        show_all = not hide_not_interested
+        print(
+            f"【调试】_should_show_all_scholars: hide_not_interested={hide_not_interested}, 返回={show_all}"
+        )
+        return show_all
+
+    def _execute_filter_query(self, sql_parts, hide_not_interested):
         """执行筛选查询并返回结果
 
         Args:
             sql_parts: 包含SQL查询各部分的字典
+            hide_not_interested: 是否隐藏不感兴趣的学者
 
         Returns:
             list: 学者ID列表
@@ -869,6 +1006,103 @@ class DataService:
             # 记录最终SQL查询
             self.logger.info(f"执行筛选SQL: {sql}")
             self.logger.info(f"SQL参数: {sql_parts['params']}")
+
+            # 特殊检查SQL条件中是否包含过滤不感兴趣学者的条件
+            has_not_interested_filter = False
+            for where_clause in sql_parts["where"]:
+                if "is_main_scholar != 2" in where_clause:
+                    has_not_interested_filter = True
+                    print(
+                        f"【调试点SQL】SQL查询中包含不感兴趣学者筛选条件: {where_clause}"
+                    )
+                    break
+            if not has_not_interested_filter:
+                print(
+                    "【调试点SQL】SQL查询中不包含不感兴趣学者筛选条件，将显示所有学者"
+                )
+
+            # 如果没有筛选不感兴趣的学者，但我们想看到所有学者，可以运行一个特殊的查询
+            # 或者如果HAS筛选不感兴趣的学者，但用户希望看到所有学者（包括不感兴趣的）
+            if self._should_show_all_scholars(hide_not_interested):
+                print("【重要解决方案】运行特殊SQL查询以包含不感兴趣的学者")
+                try:
+                    # 改用学者DAO直接获取所有学者ID
+                    print("【尝试方案1】使用ScholarDao.get_all_scholars获取所有学者")
+                    all_scholar_ids = []
+
+                    # 方法1：使用ScholarDao
+                    try:
+                        all_scholars = self.scholar_dao.get_all_scholars()
+                        if all_scholars:
+                            all_scholar_ids = [
+                                s["scholar_id"]
+                                for s in all_scholars
+                                if "scholar_id" in s
+                            ]
+                            print(
+                                f"【方案1成功】获取到 {len(all_scholar_ids)} 个学者ID"
+                            )
+                    except Exception as e1:
+                        print(f"【方案1失败】错误: {str(e1)}")
+
+                    # 方法2：如果上述方法失败，直接执行SQL
+                    if not all_scholar_ids:
+                        print("【尝试方案2】直接执行SQL查询")
+                        connection = self.db_manager.get_connection()
+                        cursor = connection.cursor()
+                        try:
+                            special_sql = "SELECT scholar_id FROM scholars"
+                            cursor.execute(special_sql)
+                            results = cursor.fetchall()
+                            all_scholar_ids = [r[0] for r in results if r and r[0]]
+                            print(
+                                f"【方案2成功】获取到 {len(all_scholar_ids)} 个学者ID"
+                            )
+                        except Exception as e2:
+                            print(f"【SQL错误1】{str(e2)}")
+                            try:
+                                # 如果第一个SQL查询失败，尝试另一种表名
+                                special_sql = (
+                                    "SELECT id FROM entities WHERE type='scholar'"
+                                )
+                                cursor.execute(special_sql)
+                                results = cursor.fetchall()
+                                all_scholar_ids = [r[0] for r in results if r and r[0]]
+                                print(
+                                    f"【方案2-备选成功】获取到 {len(all_scholar_ids)} 个学者ID"
+                                )
+                            except Exception as e3:
+                                print(f"【SQL错误2】{str(e3)}")
+
+                    # 方法3：使用EntityDao
+                    if not all_scholar_ids:
+                        print("【尝试方案3】使用EntityDao查询")
+                        try:
+                            entities = self.entity_dao.get_entities_by_type("scholar")
+                            if entities:
+                                all_scholar_ids = [
+                                    e["id"] for e in entities if "id" in e
+                                ]
+                                print(
+                                    f"【方案3成功】获取到 {len(all_scholar_ids)} 个学者ID"
+                                )
+                        except Exception as e4:
+                            print(f"【方案3失败】错误: {str(e4)}")
+
+                    # 最终检查
+                    if all_scholar_ids:
+                        print(f"【解决方案】最终找到 {len(all_scholar_ids)} 个学者ID")
+                        return all_scholar_ids
+                    else:
+                        print("【警告】所有方案均未找到学者，回退到常规查询")
+
+                except Exception as e:
+                    print(f"【错误】执行特殊处理失败: {str(e)}")
+                    import traceback
+
+                    print(traceback.format_exc())
+            else:
+                print("【注意】使用常规SQL查询，可能不包含不感兴趣的学者")
 
             # 执行查询
             connection = self.db_manager.get_connection()
@@ -932,6 +1166,15 @@ class DataService:
         Returns:
             dict: 包含nodes和edges的网络数据
         """
+        # 获取是否隐藏不感兴趣的学者参数
+        hide_not_interested = filter_params.get("hide_not_interested", True)
+        print(
+            f"【调试点3】_generate_filtered_network_data收到hide_not_interested={hide_not_interested}，类型: {type(hide_not_interested)}"
+        )
+        self.logger.info(
+            f"【重要】_generate_filtered_network_data: hide_not_interested = {hide_not_interested}"
+        )
+
         # 确保scholar_ids是列表或集合类型
         if not isinstance(scholar_ids, (list, set, tuple)):
             self.logger.warning(f"scholar_ids不是有效的集合类型: {type(scholar_ids)}")
@@ -945,6 +1188,16 @@ class DataService:
         # 生成节点
         nodes = []
         valid_scholar_ids = set()  # 用于跟踪成功处理的学者ID
+        not_interested_ids = set()  # 用于跟踪不感兴趣的学者ID
+
+        # 记录学者ID总数
+        print(f"【调试点4】共接收到 {len(scholar_ids)} 个学者ID")
+
+        # 检查学者ID列表是否为空
+        if not scholar_ids:
+            print("【调试点4.1】学者ID列表为空!")
+            self.logger.warning("学者ID列表为空，无法生成网络数据")
+            return {"nodes": [], "edges": []}
 
         for scholar_id in scholar_ids:
             try:
@@ -961,6 +1214,22 @@ class DataService:
                     self.logger.warning(f"未找到学者ID {scholar_id} 的数据")
                     continue
 
+                # 记录学者状态
+                scholar_status = scholar.get("is_main_scholar")
+                print(
+                    f"【调试点5】学者 {scholar_id} 状态: is_main_scholar={scholar_status}"
+                )
+
+                # 如果需要隐藏不感兴趣的学者，并且该学者被标记为不感兴趣，则跳过
+                if hide_not_interested and scholar.get("is_main_scholar") == 2:
+                    self.logger.info(
+                        f"【重要】筛选结果中跳过不感兴趣的学者: {scholar_id}"
+                    )
+                    not_interested_ids.add(scholar_id)
+                    continue
+                elif scholar.get("is_main_scholar") == 2:
+                    self.logger.info(f"【重要】显示不感兴趣的学者: {scholar_id}")
+
                 # 获取实体信息
                 entity = self.entity_dao.get_entity_by_id(scholar_id)
                 if not entity or "name" not in entity:
@@ -969,7 +1238,7 @@ class DataService:
                     )
                     continue
 
-                # 获取兴趣标签
+                # 获取学者兴趣标签
                 try:
                     interests = self.interest_dao.get_entity_interests(scholar_id)
                 except Exception as e:
@@ -983,7 +1252,9 @@ class DataService:
                     "id": scholar_id,
                     "label": entity.get("name", f"Scholar-{scholar_id}"),
                     "group": (
-                        "primary" if scholar.get("is_main_scholar") else "secondary"
+                        "primary"
+                        if scholar.get("is_main_scholar") != 2
+                        else "secondary"
                     ),
                     "data": {
                         "id": scholar_id,
@@ -993,7 +1264,8 @@ class DataService:
                             [i["interest"] for i in interests] if interests else []
                         ),
                         "scholar_id": scholar_id,
-                        "is_secondary": not scholar.get("is_main_scholar", False),
+                        "is_secondary": not scholar.get("is_main_scholar", False)
+                        or scholar.get("is_main_scholar") == 2,
                         "citedby": scholar.get("citedby", 0),
                         "hindex": scholar.get("hindex", 0),
                         "i10index": scholar.get("i10index", 0),
@@ -1032,6 +1304,21 @@ class DataService:
 
         # 筛选和生成边
         edges = []
+
+        # 记录状态统计信息
+        interested_count = 0
+        not_interested_count = 0
+        for node in nodes:
+            # 如果有 is_main_scholar 属性
+            if node["data"].get("is_main_scholar") == 2:
+                not_interested_count += 1
+            else:
+                interested_count += 1
+
+        print(
+            f"【调试点8】结果中的学者统计: 正常学者={interested_count}, 不感兴趣的学者={not_interested_count}"
+        )
+        print(f"【调试点9】跳过的不感兴趣学者数量: {len(not_interested_ids)}")
 
         # 关系类型筛选
         relation_filters = []

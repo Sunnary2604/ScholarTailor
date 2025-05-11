@@ -3,13 +3,8 @@
  * 处理所有与学者详情面板相关的交互和显示
  */
 
-import { getScholarById } from "../dataManager.js";
-import {
-  updateScholar,
-  updateScholarTags,
-  addScholarTag,
-  saveScholarTags,
-} from "../api.js";
+import { getScholarById, reloadData } from "../dataManager.js";
+import { updateScholar, addScholarTag } from "../api.js";
 import { showStatusMessage } from "../utils.js";
 import eventBus from "../eventBus.js";
 import graphPanel from "../components/graphPanel.js";
@@ -35,6 +30,7 @@ const elements = {
   avatarImg: () => document.getElementById("scholar-avatar"),
   fetchBtn: () => document.getElementById("fetch-scholar-btn"),
   gsLinkEl: () => document.getElementById("scholar-gs-link"),
+  notInterestedBtn: () => document.getElementById("not-interested-btn"),
 };
 
 // 渲染函数 - 根据状态更新UI
@@ -158,7 +154,7 @@ function _updateBasicInfo(scholarData) {
     affiliationEl.textContent = scholarData.affiliation || "-";
   }
 
-  // 设置研究方向 - 改为蓝底白字的tag样式
+  // 设置研究方向 - 使用标签样式
   const interestsEl = elements.interestsEl();
   if (interestsEl) {
     if (scholarData.interests && scholarData.interests.length > 0) {
@@ -183,7 +179,7 @@ function _updateBasicInfo(scholarData) {
   const homepageEl = elements.homepageEl();
   if (homepageEl) {
     if (scholarData.homepage) {
-      homepageEl.innerHTML = `<a href="${scholarData.homepage}" target="_blank">${scholarData.homepage}</a>`;
+      homepageEl.innerHTML = `<a href="${scholarData.homepage}" target="_blank" class="text-description">${scholarData.homepage}</a>`;
     } else {
       homepageEl.textContent = "-";
     }
@@ -277,11 +273,12 @@ function _updateCustomFields(scholarData) {
   // 根据学者类型设置不同内容
   if (scholarData.nodeType === "primary" || scholarData.is_main_scholar) {
     // 主要学者
-    customFieldsEl.innerHTML = "<p>这是主要学者，已包含详细数据。</p>";
+    customFieldsEl.innerHTML =
+      "<p class='text-description'>这是主要学者，已包含详细数据。</p>";
   } else {
     // 关联学者
     customFieldsEl.innerHTML =
-      "<p>这是关联学者，仅作为合作者出现。可以爬取更多详细数据。</p>";
+      "<p class='text-description'>这是关联学者，仅作为合作者出现。可以爬取更多详细数据。</p>";
   }
 
   // 如果有自定义字段，显示它们
@@ -293,7 +290,7 @@ function _updateCustomFields(scholarData) {
     for (const [key, value] of Object.entries(scholarData.custom_fields)) {
       // 跳过tags字段，它已经单独显示
       if (key === "tags") continue;
-      customHTML += `<dt>${key}:</dt><dd>${value}</dd>`;
+      customHTML += `<dt class="text-label">${key}:</dt><dd class="text-description">${value}</dd>`;
     }
     customHTML += "</dl>";
     customFieldsEl.innerHTML += customHTML;
@@ -330,7 +327,7 @@ function _updatePublications(scholar) {
     return;
   }
 
-  // 创建论文列表
+  // 创建论文列表容器
   const pubList = document.createElement("div");
   pubList.className = "publication-list";
 
@@ -350,28 +347,38 @@ function _updatePublications(scholar) {
     }
 
     const pubItem = document.createElement("div");
-    pubItem.className = "publication-item";
+    pubItem.className = "card";
 
     // 格式化引用信息
     const citationCount = pub.citedby || pub.citations || 0;
-    const citationText = citationCount > 0 ? `"${citationCount}"` : "";
 
     // 创建论文标题
     const pubTitle = document.createElement("div");
-    pubTitle.className = "pub-title";
+    pubTitle.className = "publication-title text-emphasis";
     pubTitle.textContent = pub.title;
 
     // 创建发表地点（灰色斜体）
     const pubVenue = document.createElement("div");
-    pubVenue.className = "pub-venue";
+    pubVenue.className = "publication-venue text-citation";
     pubVenue.textContent = pub.venue || "";
-    pubVenue.style.color = "#666";
-    pubVenue.style.fontStyle = "italic";
 
     // 创建引用信息
     const pubCitation = document.createElement("div");
     pubCitation.className = "pub-citation";
-    pubCitation.textContent = `${pub.year || ""} ${citationText}`.trim();
+
+    // 年份
+    const pubYear = document.createElement("span");
+    pubYear.className = "pub-year text-description";
+    pubYear.textContent = pub.year || "";
+
+    // 引用计数
+    const citationBadge = document.createElement("span");
+    citationBadge.className = "citation-count";
+    citationBadge.textContent =
+      citationCount > 0 ? `引用: ${citationCount}` : "暂无引用";
+
+    pubCitation.appendChild(pubYear);
+    pubCitation.appendChild(citationBadge);
 
     // 将元素添加到列表项
     pubItem.appendChild(pubTitle);
@@ -381,17 +388,6 @@ function _updatePublications(scholar) {
   });
 
   pubContainer.appendChild(pubList);
-
-  // 移除列表项的圆点
-  const style = document.createElement("style");
-  style.textContent = `
-    .publication-list .publication-item {
-      list-style-type: none;
-      padding-left: 0;
-      margin-bottom: 10px;
-    }
-  `;
-  document.head.appendChild(style);
 }
 
 /**
@@ -426,7 +422,7 @@ function _updateRelatedScholars(scholar) {
     return;
   }
 
-  // 创建相关学者列表
+  // 创建相关学者列表容器
   const relatedList = document.createElement("div");
   relatedList.className = "related-scholars-list";
 
@@ -443,14 +439,15 @@ function _updateRelatedScholars(scholar) {
     }
 
     const relatedItem = document.createElement("div");
-    relatedItem.className = "related-scholar-item";
+    relatedItem.className = "card";
 
     // 创建相关学者链接
     const scholarLink = document.createElement("a");
     scholarLink.href = "#";
-    scholarLink.className = "scholar-link";
+    scholarLink.className = "scholar-link text-emphasis";
     scholarLink.textContent = related.name;
     scholarLink.dataset.scholarId = related.id;
+    scholarLink.title = related.name;
 
     // 添加点击事件，跳转到相关学者
     scholarLink.addEventListener("click", function (e) {
@@ -472,11 +469,12 @@ function _updateRelatedScholars(scholar) {
 
     // 设置关系类型文本，支持多种关系的展示
     relationshipType.textContent = related.relationship || "相关学者";
+    relationshipType.title = related.relationship || "相关学者";
 
     // 如果是多重关系，添加自定义样式
     if (related.relationship && related.relationship.includes("、")) {
       relationshipType.className += " multi-relationship";
-      relationshipType.title = "存在多种关系";
+      relationshipType.title = "存在多种关系: " + related.relationship;
     }
 
     // 将元素添加到列表项
@@ -486,17 +484,6 @@ function _updateRelatedScholars(scholar) {
   });
 
   relatedContainer.appendChild(relatedList);
-
-  // 移除列表项的圆点
-  const style = document.createElement("style");
-  style.textContent = `
-    .related-scholars-list .related-scholar-item {
-      list-style-type: none;
-      padding-left: 0;
-      margin-bottom: 8px;
-    }
-  `;
-  document.head.appendChild(style);
 }
 
 /**
@@ -506,22 +493,56 @@ function _updateRelatedScholars(scholar) {
  */
 function _updateButtons(scholarData) {
   const fetchBtn = elements.fetchBtn();
-  if (!fetchBtn) return;
+  const notInterestedBtn = elements.notInterestedBtn();
 
-  // 移除所有已有的点击事件监听器
-  const newFetchBtn = fetchBtn.cloneNode(true);
-  fetchBtn.parentNode.replaceChild(newFetchBtn, fetchBtn);
+  if (!fetchBtn && !notInterestedBtn) return;
 
-  // 如果是主要学者，隐藏爬取按钮
-  if (scholarData.nodeType === "primary" || scholarData.is_main_scholar) {
-    newFetchBtn.style.display = "none";
-  } else {
-    newFetchBtn.style.display = "inline-block";
+  // 处理爬取按钮
+  if (fetchBtn) {
+    // 移除所有已有的点击事件监听器
+    const newFetchBtn = fetchBtn.cloneNode(true);
+    fetchBtn.parentNode.replaceChild(newFetchBtn, fetchBtn);
 
-    // 添加新的事件监听器
-    newFetchBtn.addEventListener("click", () => {
-      _handleScholarFetch(newFetchBtn, scholarData);
-    });
+    // 如果是主要学者，隐藏爬取按钮
+    if (
+      scholarData.is_main_scholar === 1 ||
+      scholarData.nodeType === "primary"
+    ) {
+      newFetchBtn.style.display = "none";
+    } else {
+      newFetchBtn.style.display = "inline-block";
+
+      // 添加新的事件监听器
+      newFetchBtn.addEventListener("click", () => {
+        _handleScholarFetch(newFetchBtn, scholarData);
+      });
+    }
+  }
+
+  // 处理不感兴趣按钮
+  if (notInterestedBtn) {
+    // 移除所有已有的点击事件监听器
+    const newNotInterestedBtn = notInterestedBtn.cloneNode(true);
+    notInterestedBtn.parentNode.replaceChild(
+      newNotInterestedBtn,
+      notInterestedBtn
+    );
+
+    // 如果是不感兴趣的学者，显示"已标记为不感兴趣"
+    if (scholarData.is_main_scholar === 2) {
+      newNotInterestedBtn.textContent = "已隐藏";
+      newNotInterestedBtn.classList.add("disabled");
+      newNotInterestedBtn.disabled = true;
+    } else {
+      newNotInterestedBtn.textContent = "隐藏";
+      newNotInterestedBtn.classList.remove("disabled");
+      newNotInterestedBtn.disabled = false;
+
+      // 添加新的事件监听器
+      newNotInterestedBtn.addEventListener("click", () => {
+        _handleNotInterested(newNotInterestedBtn, scholarData);
+      });
+    }
   }
 }
 
@@ -537,7 +558,7 @@ function _handleScholarFetch(button, scholarData) {
   button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 爬取中...';
   button.disabled = true;
 
-  // 使用API更新学者信息
+  // 使用API更新学者信息 - 不传第二个参数时，后端会自动将学者设为主要学者
   updateScholar(scholarData.id)
     .then((data) => {
       // 恢复按钮状态
@@ -555,11 +576,7 @@ function _handleScholarFetch(button, scholarData) {
               // 更新本地数据并触发数据更新事件
               eventBus.emit("scholar:updated", updatedScholar);
 
-              // 更新关联学者状态为主要学者
-              updatedScholar.is_main_scholar = 1;
-              updatedScholar.nodeType = "primary";
-
-              // 更新UI
+              // 更新UI - 不需要手动设置状态，因为后端已经完成了
               state.currentScholar = updatedScholar;
               render();
 
@@ -595,6 +612,119 @@ function _handleScholarFetch(button, scholarData) {
       button.innerHTML = originalText;
       button.disabled = false;
       showStatusMessage("更新学者数据时出错: " + error, "error");
+    });
+}
+
+/**
+ * 处理不感兴趣学者标记
+ * @private
+ * @param {HTMLElement} button - 不感兴趣按钮元素
+ * @param {Object} scholarData - 学者数据
+ */
+function _handleNotInterested(button, scholarData) {
+  console.log(
+    `DEBUGTAG: 开始_handleNotInterested - scholarId=${scholarData.id}`
+  );
+  console.log(`DEBUGTAG: 学者数据:`, scholarData);
+
+  // 设置按钮为加载状态
+  const originalText = button.textContent;
+  button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 正在处理...';
+  button.disabled = true;
+  console.log(`DEBUGTAG: 按钮状态已设置为加载中`);
+
+  // 准备更新数据 - 设置is_main_scholar为2表示不感兴趣
+  const updateData = {
+    is_main_scholar: 2,
+  };
+  console.log(`DEBUGTAG: 准备更新数据 - updateData=`, updateData);
+
+  // 使用API更新学者信息，直接传递学者ID和更新数据
+  console.log(`DEBUGTAG: 调用updateScholar API - scholarId=${scholarData.id}`);
+  updateScholar(scholarData.id, updateData)
+    .then((result) => {
+      console.log(`DEBUGTAG: updateScholar API返回结果:`, result);
+
+      if (result.success) {
+        console.log(`DEBUGTAG: 更新成功 - 显示成功消息`);
+        showStatusMessage("已将该学者标记为不感兴趣", "success");
+
+        // 更新按钮状态
+        button.textContent = "已标记为不感兴趣";
+        button.classList.add("disabled");
+        button.disabled = true;
+        console.log(`DEBUGTAG: 按钮状态已更新为已禁用`);
+
+        // 更新本地数据
+        if (window.scholars && window.scholars[scholarData.id]) {
+          window.scholars[scholarData.id].is_main_scholar = 2;
+          console.log(
+            `DEBUGTAG: 已更新本地缓存数据 - 学者${scholarData.id}.is_main_scholar=2`
+          );
+        }
+
+        // 更新当前学者状态
+        if (
+          state.currentScholar &&
+          state.currentScholar.id === scholarData.id
+        ) {
+          state.currentScholar.is_main_scholar = 2;
+          console.log(
+            `DEBUGTAG: 已更新当前状态 - currentScholar.is_main_scholar=2`
+          );
+        }
+
+        // 通知图表更新节点类型和样式
+        console.log(`DEBUGTAG: 发出graph:updateNode事件`);
+        eventBus.emit("graph:updateNode", {
+          id: scholarData.id,
+          data: {
+            is_main_scholar: 2,
+            nodeType: "hidden", // 可以定义一个新的节点类型
+          },
+          classes: {
+            add: ["not-interested-node"],
+            remove: ["primary-node", "secondary-node"],
+          },
+        });
+
+        // 触发学者更新事件
+        console.log(`DEBUGTAG: 发出scholar:updated事件`);
+        eventBus.emit("scholar:updated", {
+          ...state.currentScholar,
+          is_main_scholar: 2,
+        });
+
+        // 重新加载数据并刷新图谱
+        console.log(`DEBUGTAG: 开始重新加载数据`);
+        reloadData()
+          .then(() => {
+            console.log(`DEBUGTAG: 数据重新加载成功`);
+            showStatusMessage("图谱已更新，该学者将被隐藏", "success");
+          })
+          .catch((error) => {
+            console.error(`DEBUGTAG: 刷新图谱失败:`, error);
+            showStatusMessage("图谱刷新失败，请手动刷新页面", "error");
+          });
+      } else {
+        // 恢复按钮状态
+        console.log(`DEBUGTAG: 更新失败 - 恢复按钮状态`);
+        button.textContent = originalText;
+        button.disabled = false;
+
+        showStatusMessage(
+          "标记不感兴趣失败: " + (result.error || "未知错误"),
+          "error"
+        );
+      }
+    })
+    .catch((error) => {
+      // 恢复按钮状态
+      console.error(`DEBUGTAG: 更新请求出错:`, error);
+      button.textContent = originalText;
+      button.disabled = false;
+
+      showStatusMessage("标记不感兴趣时出错: " + error, "error");
     });
 }
 

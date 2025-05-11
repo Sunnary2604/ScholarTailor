@@ -284,52 +284,7 @@ class EntityDao:
             stats[row["type"]] = row["count"]
 
         return stats
-
-    def convert_to_main_scholar(self, scholar_id):
-        """将关联学者转换为主要学者
-
-        Args:
-            scholar_id: 需要转换的学者ID
-
-        Returns:
-            bool: 是否成功
-        """
-        try:
-            # 确认学者存在且当前不是主要学者
-            check_query = """
-            SELECT e.id, e.name, s.is_main_scholar 
-            FROM entities e 
-            JOIN scholars s ON e.id = s.scholar_id 
-            WHERE e.id = ? AND e.type = 'scholar'
-            """
-
-            cursor = self.db_manager.execute(check_query, (scholar_id,))
-            scholar = cursor.fetchone()
-
-            if not scholar:
-                logging.error(f"学者 {scholar_id} 不存在，无法转换为主要学者")
-                return False
-
-            if scholar.get("is_main_scholar", 0) == 1:
-                logging.info(f"学者 {scholar_id} 已经是主要学者，无需转换")
-                return True
-
-            # 更新学者状态为主要学者
-            update_query = """
-            UPDATE scholars SET is_main_scholar = 1 WHERE scholar_id = ?
-            """
-
-            self.db_manager.execute(update_query, (scholar_id,))
-
-            logging.info(
-                f"已将学者 {scholar_id} ({scholar.get('name', '')}) 转换为主要学者"
-            )
-            return True
-
-        except Exception as e:
-            logging.error(f"转换主要学者时出错: {str(e)}")
-            return False
-
+ 
     def create_entities_batch(self, entity_data_list):
         """批量创建实体记录
 

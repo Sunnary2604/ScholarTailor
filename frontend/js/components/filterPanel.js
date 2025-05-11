@@ -18,6 +18,7 @@ const state = {
     showCoauthor: true,
     showAdvisor: true,
     showColleague: true,
+    hideNotInterested: true,
     customFilters: [],
   },
   // 追踪自定义筛选条件ID
@@ -41,6 +42,7 @@ const elements = {
   showCoauthor: () => document.getElementById("show-coauthor"),
   showAdvisor: () => document.getElementById("show-advisor"),
   showColleague: () => document.getElementById("show-colleague"),
+  hideNotInterested: () => document.getElementById("hide-not-interested"),
   customFiltersContainer: () =>
     document.getElementById("custom-filters-container"),
   statusMessage: () => document.getElementById("filter-status"),
@@ -97,6 +99,11 @@ function updateFilterControls() {
   if (showAdvisor) showAdvisor.checked = state.filterConditions.showAdvisor;
   if (showColleague)
     showColleague.checked = state.filterConditions.showColleague;
+
+  // 更新隐藏不感兴趣选项（高级筛选）
+  const hideNotInterested = elements.hideNotInterested();
+  if (hideNotInterested)
+    hideNotInterested.checked = state.filterConditions.hideNotInterested;
 }
 
 /**
@@ -118,7 +125,7 @@ function addFilterCondition() {
   filterItem.innerHTML = `
     <div class="filter-content">
       <div class="filter-condition-row">
-        <select class="filter-dimension-select" onchange="window.updateFilterOperators(this)">
+        <select class="filter-dimension-select" onchange="window.filterPanelMethods.updateFilterOperators(this)">
           <option value="">-- 选择筛选维度 --</option>
           <optgroup label="学者属性">
             <option value="interestKeyword" data-type="scholar">研究方向</option>
@@ -147,7 +154,7 @@ function addFilterCondition() {
       
       <input type="text" class="filter-value-input" placeholder="输入筛选值">
       
-      <button class="remove-filter-btn" onclick="window.removeFilterCondition('${filterId}')">
+      <button class="remove-filter-btn" onclick="window.filterPanelMethods.removeFilterCondition('${filterId}')">
         <i class="fas fa-times"></i>
       </button>
     </div>
@@ -329,6 +336,7 @@ function applyAdvancedFilters() {
   const showCoauthor = elements.showCoauthor().checked;
   const showAdvisor = elements.showAdvisor().checked;
   const showColleague = elements.showColleague().checked;
+  const hideNotInterested = elements.hideNotInterested().checked;
 
   // 更新状态
   state.filterConditions.minConnections = minConnections;
@@ -337,6 +345,7 @@ function applyAdvancedFilters() {
   state.filterConditions.showCoauthor = showCoauthor;
   state.filterConditions.showAdvisor = showAdvisor;
   state.filterConditions.showColleague = showColleague;
+  state.filterConditions.hideNotInterested = hideNotInterested;
 
   // 初始化筛选参数对象
   const filterParams = {
@@ -346,6 +355,7 @@ function applyAdvancedFilters() {
     showCoauthor,
     showAdvisor,
     showColleague,
+    hideNotInterested,
   };
 
   // 收集自定义筛选条件
@@ -408,13 +418,9 @@ function applyAdvancedFilters() {
     hasAdvancedFilters = true;
   });
 
-  if (hasAdvancedFilters) {
-    // 如果有高级筛选条件，通过API进行查询
-    applyAdvancedFilterViaAPI(filterParams);
-  } else {
-    // 如果只有基本筛选条件，使用客户端筛选
-    applyFilters();
-  }
+  // 修改这里：始终使用API进行筛选
+  // 由于"隐藏不感兴趣的学者"选项的处理需要后端支持，所以我们总是使用API
+  applyAdvancedFilterViaAPI(filterParams);
 
   // 触发筛选应用事件
   eventBus.emit("filter:applied", {
@@ -457,14 +463,40 @@ function applyAdvancedFilterViaAPI(filterParams) {
     filterParams.showSecondary = elements.showSecondary().checked;
   }
 
+  // 获取不感兴趣的学者过滤选项
+  if (typeof filterParams.hideNotInterested !== "boolean") {
+    const hideNotInterested = elements.hideNotInterested();
+    // 确保值是布尔类型，不是字符串
+    if (hideNotInterested) {
+      filterParams.hideNotInterested = hideNotInterested.checked;
+    } else {
+      // 默认值为true
+      filterParams.hideNotInterested = true;
+    }
+  }
+
   console.log("发送筛选请求:", filterParams);
+  console.log(
+    "hideNotInterested的值:",
+    filterParams.hideNotInterested,
+    "类型:",
+    typeof filterParams.hideNotInterested
+  );
+
+  // 输出原始checkbox状态，方便调试
+  const hideNotInterestedCheckbox = elements.hideNotInterested();
+  if (hideNotInterestedCheckbox) {
+    console.log("原始checkbox状态:", hideNotInterestedCheckbox.checked);
+  }
 
   // 使用API函数应用筛选
   applyAdvancedFilter(filterParams)
     .then((data) => {
       if (data.success) {
         // 筛选成功，更新图表
-        updateNetworkWithFilteredData(data.data);
+        updateNetworkWithFilteredData(data.data, {
+          hideNotInterested: filterParams.hideNotInterested,
+        });
         showFilterStatus(
           `筛选成功：找到 ${data.data.nodes.length} 个学者节点`,
           "success"
@@ -604,6 +636,10 @@ function resetBasicFilters() {
   if (showAdvisor) showAdvisor.checked = true;
   if (showColleague) showColleague.checked = true;
 
+  // 重置隐藏不感兴趣选项（高级筛选）
+  const hideNotInterested = elements.hideNotInterested();
+  if (hideNotInterested) hideNotInterested.checked = true;
+
   // 更新状态
   state.filterConditions = {
     minConnections: 1,
@@ -612,6 +648,7 @@ function resetBasicFilters() {
     showCoauthor: true,
     showAdvisor: true,
     showColleague: true,
+    hideNotInterested: true,
     customFilters: [],
   };
 }
@@ -791,8 +828,10 @@ function setupEventListeners() {
   }
 
   // 将筛选函数暴露给全局作用域，以便HTML中的onclick调用
-  window.removeFilterCondition = removeFilterCondition;
-  window.updateFilterOperators = updateFilterOperators;
+  window.filterPanelMethods = {
+    removeFilterCondition,
+    updateFilterOperators,
+  };
 
   // 设置标签筛选UI
   setupTagFiltering();

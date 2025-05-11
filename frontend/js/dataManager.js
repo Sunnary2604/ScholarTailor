@@ -342,6 +342,7 @@ export function cacheScholars(data) {
  */
 export async function reloadData() {
   try {
+    console.log("DEBUGTAG: 开始reloadData函数");
     // 显示加载状态
     const statusElement = document.getElementById("data-status");
     if (statusElement) {
@@ -350,29 +351,39 @@ export async function reloadData() {
     }
 
     // 从API获取最新网络数据
+    console.log("DEBUGTAG: 开始从API获取最新网络数据");
     const newData = await loadData();
+    console.log("DEBUGTAG: 获取网络数据完成", {
+      节点数量: newData?.nodes?.length || 0,
+      边数量: newData?.edges?.length || 0,
+    });
 
     // 检查边的关系类型
     if (newData && newData.edges) {
-      console.log("检查边的关系类型...");
+      console.log("DEBUGTAG: 检查边的关系类型...");
       // 统计每种关系类型的数量
       const relationCounts = {};
       newData.edges.forEach((edge) => {
         const relationType = edge.label || "unknown";
         relationCounts[relationType] = (relationCounts[relationType] || 0) + 1;
       });
-      console.log("关系类型统计:", relationCounts);
+      console.log("DEBUGTAG: 关系类型统计:", relationCounts);
     }
 
     // 更新缓存
+    console.log("DEBUGTAG: 更新学者缓存");
     cacheScholars(newData);
+    console.log(
+      "DEBUGTAG: 学者缓存更新完成，数量:",
+      Object.keys(state.scholars).length
+    );
 
     // 更新管理面板数据
     loadAdminPanelData();
 
     // 检查图谱实例是否存在
     if (!window.cy) {
-      console.error("图谱实例不存在，无法重新加载数据");
+      console.error("DEBUGTAG: 图谱实例不存在，无法重新加载数据");
       if (statusElement) {
         statusElement.textContent = "图谱未初始化，无法加载数据";
         statusElement.style.display = "block";
@@ -388,22 +399,27 @@ export async function reloadData() {
       : true;
 
     // 记录日志
-    console.log(`是否显示孤立节点: ${shouldShowIsolatedNodes}`);
+    console.log(`DEBUGTAG: 是否显示孤立节点: ${shouldShowIsolatedNodes}`);
 
     // 重建图谱，根据孤立节点开关状态决定是否预筛选孤立节点
+    console.log("DEBUGTAG: 开始重建图谱");
     window.cy.elements().remove();
     if (!shouldShowIsolatedNodes) {
       // 如果不显示孤立节点，使用预过滤的元素
+      console.log("DEBUGTAG: 过滤孤立节点后添加元素");
       const filteredElements = filterIsolatedNodes(getGraphElements(newData));
       window.cy.add(filteredElements);
     } else {
       // 显示所有节点
+      console.log("DEBUGTAG: 添加所有图谱元素");
       window.cy.add(getGraphElements(newData));
     }
 
     // 应用布局
     try {
+      console.log("DEBUGTAG: 应用图谱布局");
       graphPanel.applyLayout();
+      console.log("DEBUGTAG: 图谱布局应用完成");
 
       // 显示加载完成状态
       if (statusElement) {
@@ -413,7 +429,7 @@ export async function reloadData() {
         }, 2000);
       }
     } catch (layoutError) {
-      console.error("应用布局失败:", layoutError);
+      console.error("DEBUGTAG: 应用布局失败:", layoutError);
       // 即使布局失败，也返回true表示数据已加载
       if (statusElement) {
         statusElement.textContent = "数据已加载，但布局应用失败";
@@ -424,11 +440,13 @@ export async function reloadData() {
     }
 
     // 发布数据加载完成事件
+    console.log("DEBUGTAG: 发布data:reloadCompleted事件");
     eventBus.emit("data:reloadCompleted", newData);
+    console.log("DEBUGTAG: reloadData函数完成，返回true");
 
     return true;
   } catch (error) {
-    console.error("重新加载数据失败:", error);
+    console.error("DEBUGTAG: 重新加载数据失败:", error);
     adminPanel.showStatus("重新加载数据失败: " + error.message, "error");
 
     // 显示错误状态
@@ -465,18 +483,24 @@ export function loadAdminPanelData() {
 }
 
 /**
- * 获取图谱元素并预筛选
- * @param {Object} data - 图谱数据
- * @param {boolean} preFilter - 是否预筛选(默认为true)
- * @returns {Array} 图谱元素
+ * 从数据创建图谱元素
+ * @param {Object} data - 网络数据 {nodes, edges}
+ * @param {boolean} preFilter - 是否预先过滤节点
+ * @param {boolean} hideNotInterested - 是否隐藏不感兴趣的学者，默认为true
+ * @returns {Array} 图谱元素数组
  */
-export function getGraphElements(data, preFilter = true) {
+export function getGraphElements(
+  data,
+  preFilter = true,
+  hideNotInterested = true
+) {
   if (!data) return [];
 
   console.time("生成图谱元素");
   console.log("=== getGraphElements 函数开始处理数据 ===");
   console.log("接收的数据节点总数:", data.nodes ? data.nodes.length : 0);
   console.log("接收的数据边总数:", data.edges ? data.edges.length : 0);
+  console.log("是否隐藏不感兴趣的学者:", hideNotInterested);
 
   // 预先计算节点连接数量，用于后续处理和预筛选
   const nodeConnections = {};
@@ -499,14 +523,36 @@ export function getGraphElements(data, preFilter = true) {
     let currentBatch = [];
 
     for (const node of data.nodes) {
+      // 跳过被标记为"不感兴趣"的学者节点（is_main_scholar=2），如果hideNotInterested为true
+      if (hideNotInterested && node.data && node.data.is_main_scholar === 2) {
+        console.log(
+          `跳过不感兴趣学者节点: ${node.id} (${
+            node.name || node.data?.name || "未命名"
+          })`
+        );
+        continue;
+      }
+
       // 确保使用name作为label，如果没有name则使用id
       const nodeLabel = node.name || node.data?.name || node.id || "未命名";
+
+      // 处理学者类型
+      let nodeType = node.group || "primary";
+
+      // 如果有is_main_scholar属性，根据它确定节点类型
+      if (node.data && node.data.is_main_scholar !== undefined) {
+        if (node.data.is_main_scholar === 1) {
+          nodeType = "primary";
+        } else if (node.data.is_main_scholar === 0) {
+          nodeType = "secondary";
+        }
+      }
 
       currentBatch.push({
         data: {
           id: node.id,
           label: nodeLabel,
-          nodeType: node.group || "primary", // 保留原始类型为nodeType
+          nodeType: nodeType,
           ...node.data,
         },
         group: "nodes",
@@ -547,14 +593,26 @@ export function getGraphElements(data, preFilter = true) {
 
     // 第一遍遍历：收集所有边的信息
     for (const edge of data.edges) {
+      // 检查源节点和目标节点是否存在于元素列表中
+      // 如果节点是不感兴趣的学者（已被跳过），则跳过相关的边
+      const sourceNode = elements.find((el) => el.data.id === edge.source);
+      const targetNode = elements.find((el) => el.data.id === edge.target);
+
+      if (!sourceNode || !targetNode) {
+        console.log(
+          `跳过边 ${edge.source}-${edge.target}，因为至少有一个端点不存在于图中`
+        );
+        continue;
+      }
+
       // 创建边的唯一标识（按字母顺序排序节点ID）
       const [node1, node2] = [edge.source, edge.target].sort();
       const edgeKey = `${node1}-${node2}`;
 
       if (!edgeMap.has(edgeKey)) {
         edgeMap.set(edgeKey, {
-          source: node1,
-          target: node2,
+          source: edge.source,
+          target: edge.target,
           relations: new Set(),
           weights: new Map(),
           highestPriorityType: null,
@@ -663,84 +721,71 @@ export function filterIsolatedNodes(elements) {
 }
 
 /**
- * 更新网络图筛选后的数据
- * @param {Object} networkData - 网络数据（包含nodes和edges）
+ * 使用后端过滤的数据更新网络
+ * @param {Object} networkData - 已经过滤的网络数据
+ * @param {Object} filterOptions - 筛选选项（可选）
+ * @returns {boolean} 更新是否成功
  */
-export function updateNetworkWithFilteredData(networkData) {
-  if (!window.cy || !networkData || !networkData.nodes) return;
+export function updateNetworkWithFilteredData(networkData, filterOptions = {}) {
+  if (!window.cy) {
+    console.error("无法更新网络，cytoscapeJS实例未初始化");
+    return false;
+  }
+
+  if (!networkData) {
+    console.error("网络数据为空");
+    return false;
+  }
 
   try {
-    // 获取当前网络中的所有节点和边的ID集合
-    const allNodeIds = new Set(window.cy.nodes().map((n) => n.id()));
+    console.log("使用过滤后的数据更新网络:", networkData);
+    console.log("过滤选项:", filterOptions);
 
-    // 获取筛选结果中的节点ID集合
-    const filteredNodeIds = new Set(networkData.nodes.map((n) => n.id));
+    // 创建新的图谱元素 - 传递hideNotInterested参数
+    const hideNotInterested =
+      filterOptions.hideNotInterested !== undefined
+        ? filterOptions.hideNotInterested
+        : true;
 
-    // 隐藏不在筛选结果中的节点
-    window.cy.nodes().forEach((node) => {
-      if (filteredNodeIds.has(node.id())) {
-        node.removeClass("filtered");
-        node.style("display", "element");
-      } else {
-        node.addClass("filtered");
-        node.style("display", "none");
-      }
+    const elements = getGraphElements(networkData, true, hideNotInterested);
+
+    // 更新图谱
+    window.cy.elements().remove();
+    window.cy.add(elements);
+
+    // 如果节点数量过少，应用特殊布局
+    if (elements.length < 20) {
+      console.log("节点数量较少，应用circle布局");
+      window.cy
+        .layout({
+          name: "circle",
+          animate: true,
+          animationDuration: 500,
+        })
+        .run();
+    } else {
+      console.log("应用fcose布局");
+      // 应用fcose布局
+      window.cy
+        .layout({
+          name: "fcose",
+          animationDuration: 1000,
+          quality: "proof",
+          animate: true,
+        })
+        .run();
+    }
+
+    // 触发图谱更新事件
+    eventBus.emit("graph:updated", {
+      nodeCount: window.cy.nodes().length,
+      edgeCount: window.cy.edges().length,
     });
 
-    // 筛选边 - 显示连接两个可见节点的边
-    window.cy.edges().forEach((edge) => {
-      const sourceId = edge.source().id();
-      const targetId = edge.target().id();
-
-      if (filteredNodeIds.has(sourceId) && filteredNodeIds.has(targetId)) {
-        edge.removeClass("filtered");
-        edge.style("display", "element");
-      } else {
-        edge.addClass("filtered");
-        edge.style("display", "none");
-      }
-    });
-
-    // 添加新节点（如果有）
-    networkData.nodes.forEach((nodeData) => {
-      if (!allNodeIds.has(nodeData.id)) {
-        // 添加新节点
-        window.cy.add({
-          group: "nodes",
-          data: {
-            id: nodeData.id,
-            label: nodeData.label,
-            ...nodeData.data,
-          },
-        });
-      }
-    });
-
-    // 添加新边（如果有）
-    networkData.edges.forEach((edgeData) => {
-      const edgeId = `${edgeData.source}-${edgeData.target}`;
-      if (!window.cy.getElementById(edgeId).length) {
-        // 添加新边
-        window.cy.add({
-          group: "edges",
-          data: {
-            id: edgeId,
-            source: edgeData.source,
-            target: edgeData.target,
-            label: edgeData.label,
-            weight: edgeData.weight,
-          },
-        });
-      }
-    });
-
-    // 重新应用布局
-    graphPanel.applyLayout();
-
-    // 发布网络更新事件
-    eventBus.emit("data:networkUpdated", networkData);
+    return true;
   } catch (error) {
-    console.error("更新筛选后的网络图时出错:", error);
+    console.error("更新网络时出错:", error);
+    return false;
   }
 }
 

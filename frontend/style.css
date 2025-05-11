@@ -1,3 +1,4 @@
+/* ===== 1. 基础设置 ===== */
 /* 基本样式重置 */
 * {
   margin: 0;
@@ -10,8 +11,8 @@
 
 :root {
   /* 主色调 */
-  --primary-color: #3182bd;
-  --primary-dark: #08519c;
+  --primary-color: #12507b;
+  --primary-dark: #19325f;
   --secondary-color: #31a354;
   --accent-color: #fd8d3c;
   --warning-color: #e74c3c;
@@ -32,6 +33,14 @@
   --shadow-sm: 0 2px 5px rgba(0, 0, 0, 0.1);
   --shadow-md: 0 4px 10px rgba(0, 0, 0, 0.15);
   --shadow-lg: 0 8px 20px rgba(0, 0, 0, 0.2);
+
+  /* 字体大小 */
+  --font-size-xs: 0.75rem; /* 12px */
+  --font-size-sm: 0.85rem; /* 14px */
+  --font-size-base: 1rem; /* 16px */
+  --font-size-md: 1.1rem; /* 18px */
+  --font-size-lg: 1.3rem; /* 20px */
+  --font-size-xl: 1.6rem; /* 24px */
 }
 
 body {
@@ -41,150 +50,73 @@ body {
   background-color: var(--gray-light);
 }
 
+/* ===== 通用文本样式 ===== */
+.text-title {
+  font-size: var(--font-size-xl);
+  font-weight: 600;
+  color: var(--dark-color);
+  margin-bottom: 0.5rem;
+  line-height: 1.3;
+}
+
+.text-subtitle {
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  color: var(--dark-color);
+  margin-bottom: 0.5rem;
+  line-height: 1.3;
+}
+
+.text-heading {
+  font-size: var(--font-size-md);
+  font-weight: 600;
+  color: var(--dark-color);
+  margin-bottom: 0.5rem;
+  padding-bottom: 0.3rem;
+  border-bottom: 2px solid var(--primary-color);
+}
+
+.text-subheading {
+  font-size: var(--font-size-base);
+  font-weight: 500;
+  color: var(--dark-color);
+  margin-bottom: 0.3rem;
+}
+
+.text-label {
+  font-weight: 500;
+  color: var(--gray-dark);
+  font-size: var(--font-size-sm);
+}
+
+.text-description {
+  font-size: var(--font-size-sm);
+  color: var(--gray-dark);
+  line-height: 1.5;
+}
+
+.text-citation {
+  font-size: var(--font-size-xs);
+  color: var(--gray-dark);
+  font-style: italic;
+}
+
+.text-highlight {
+  color: var(--primary-color);
+  font-weight: 500;
+}
+
+.text-emphasis {
+  font-weight: 500;
+  color: var(--dark-color);
+}
+
+/* ===== 2. 布局组件 ===== */
 .container {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
   max-width: 100%;
-}
-
-/* 头部样式 */
-header {
-  background-color: var(--dark-color);
-  color: white;
-  padding: 1rem 1.5rem;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  box-shadow: var(--shadow-md);
-  z-index: 10;
-  flex-wrap: wrap;
-  gap: 0.8rem;
-}
-
-header h1 {
-  font-size: 1.5rem;
-  font-weight: 600;
-  white-space: nowrap;
-}
-
-.nav-actions {
-  display: flex;
-  align-items: center;
-  gap: 0.8rem;
-}
-
-.search-container {
-  display: flex;
-  align-items: center;
-  background-color: rgba(255, 255, 255, 0.15);
-  border-radius: var(--border-radius-md);
-  padding: 2px;
-  transition: all 0.3s;
-  position: relative;
-}
-
-.search-container:hover {
-  background-color: rgba(255, 255, 255, 0.25);
-}
-
-#search-input {
-  padding: 8px 12px;
-  border: none;
-  border-radius: var(--border-radius-md) 0 0 var(--border-radius-md);
-  width: 250px;
-  font-size: 0.95rem;
-  background-color: rgba(255, 255, 255, 0.9);
-  color: var(--dark-color);
-}
-
-#search-btn {
-  background-color: var(--primary-color);
-  color: white;
-  border: none;
-  padding: 8px 15px;
-  border-radius: 0 var(--border-radius-md) var(--border-radius-md) 0;
-  cursor: pointer;
-  font-size: 0.95rem;
-  transition: background-color 0.3s;
-  font-weight: 500;
-}
-
-#search-btn:hover {
-  background-color: var(--primary-dark);
-}
-
-/* 搜索结果样式 */
-.search-results {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  width: 100%;
-  background-color: white;
-  border-radius: var(--border-radius-md);
-  box-shadow: var(--shadow-md);
-  max-height: 300px;
-  overflow-y: scroll !important;
-  margin-top: 5px;
-  z-index: 30 !important;
-}
-
-.search-result-item {
-  padding: 10px 15px;
-  cursor: pointer;
-  border-bottom: 1px solid #f0f0f0;
-  transition: background-color 0.2s;
-}
-
-.search-result-item:hover {
-  background-color: var(--gray-light);
-}
-
-.search-result-item:last-child {
-  border-bottom: none;
-}
-
-.result-name {
-  font-weight: 500;
-  color: var(--dark-color);
-}
-
-.result-type {
-  font-size: 0.8rem;
-  color: var(--gray-dark);
-}
-
-.more-results {
-  padding: 8px 15px;
-  text-align: center;
-  font-size: 0.85rem;
-  color: var(--gray-dark);
-  background-color: var(--gray-light);
-}
-
-.no-results {
-  padding: 15px;
-  text-align: center;
-  color: var(--gray-dark);
-}
-
-.admin-btn {
-  background-color: var(--dark-color);
-  color: white;
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  border-radius: var(--border-radius-sm);
-  width: 38px;
-  height: 38px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.admin-btn:hover {
-  background-color: rgba(255, 255, 255, 0.1);
-  transform: rotate(15deg);
 }
 
 /* 主内容区域 */
@@ -198,17 +130,6 @@ main {
   overflow: hidden;
 }
 
-/* 工具栏样式 */
-.toolbar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 10px;
-  background-color: white;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  z-index: 10;
-}
-
 /* 主容器布局 - 水平排列图谱和详情面板 */
 .main-container {
   display: flex;
@@ -219,535 +140,228 @@ main {
   width: 100%;
 }
 
-/* 图谱容器 */
-.graph-container {
-  position: relative;
-  flex: 1;
-  background-color: #f9f9f9;
-  border-radius: 6px;
-  overflow: hidden;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  height: auto;
-  width: 70%; /* 设置宽度为70% */
-}
-
-/* Cytoscape容器样式 */
-#cy {
-  width: 100%;
-  height: 100%;
-  position: absolute;
-  top: 0;
-  left: 0;
-  z-index: 1;
-  background-color: #f9f9f9;
-}
-
-/* 顶部工具栏样式 */
-.top-toolbar {
-  position: relative;
-  z-index: 10;
-  background: rgba(255, 255, 255, 0.95);
-  padding: 8px 15px;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 10px;
-  border-bottom: 1px solid #e0e0e0;
-}
-
-.toolbar-left,
-.toolbar-right {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.toolbar-group {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  border-right: 1px solid rgba(0, 0, 0, 0.1);
-  padding-right: 15px;
-  font-size: 0.85rem;
-}
-
-.toolbar-group:last-child {
-  border-right: none;
-  padding-right: 0;
-}
-
-.toolbar-label {
-  font-weight: 500;
-  color: var(--dark-color);
-  font-size: 0.85rem;
-}
-
-/* 图谱控制区域 */
-.graph-controls {
-  position: absolute;
-  top: 15px;
-  right: 15px;
-  z-index: 10;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  background-color: rgba(255, 255, 255, 0.85);
-  padding: 10px;
-  border-radius: 8px;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
-}
-
-.graph-controls button,
-.graph-btn {
-  background-color: white;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  padding: 8px 12px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+/* ===== 3. 按钮组件 ===== */
+/* 基础按钮样式 */
+.btn {
+  padding: 0.4rem 1.2rem;
+  border-radius: var(--border-radius-sm);
+  border: none;
+  height: 38px;
+  font-size: 0.95rem;
   cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font-size: 0.9rem;
-  color: #333;
   transition: all 0.2s;
-  width: 120px;
+  background-color: var(--gray-light);
+  color: var(--dark-color);
 }
 
-.graph-controls button:hover,
-.graph-btn:hover {
-  background-color: #f5f5f5;
-  transform: translateY(-2px);
-  box-shadow: 0 3px 5px rgba(0, 0, 0, 0.15);
+.btn:hover {
+  background-color: #e0e0e0;
 }
 
-.graph-controls button i,
-.graph-btn i {
-  margin-right: 5px;
-}
-
-/* 悬浮添加按钮样式 */
-.floating-add-btn {
-  position: absolute;
-  bottom: 25px;
-  right: 25px;
-  width: 60px;
-  height: 60px;
-  border-radius: 50%;
+/* 按钮变种 */
+.btn-primary {
   background-color: var(--primary-color);
   color: white;
-  border: none;
+}
+
+.btn-primary:hover {
+  background-color: var(--primary-dark);
+}
+
+.btn-warning {
+  background-color: var(--warning-color);
+  color: white;
+}
+
+.btn-warning:hover {
+  background-color: #c0392b;
+}
+
+.btn-sm {
+  padding: 0.4rem 0.8rem;
+  font-size: 0.85rem;
+}
+
+.btn-lg {
+  padding: 1rem 1.5rem;
+  font-size: 1.1rem;
+}
+
+.btn-rounded {
+  padding: 8px 15px;
+  font-size: 0.95rem;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: var(--border-radius-sm);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25);
-  z-index: 20;
-  transition: all 0.3s ease;
+  transition: all 0.2s;
 }
 
-.floating-add-btn:hover {
-  transform: scale(1.1);
-  background-color: var(--primary-dark);
-  box-shadow: 0 6px 15px rgba(0, 0, 0, 0.3);
-}
-
-.floating-add-btn i {
-  font-size: 24px;
-}
-
-/* 图谱控制头部样式 - 将内容移至顶部工具栏，保留类以兼容 */
-.graph-controls-header {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  background-color: rgba(255, 255, 255, 0.1);
-  padding: 0.5rem 0.8rem;
-  border-radius: var(--border-radius-sm);
-  flex-wrap: wrap;
-  display: none; /* 隐藏旧控制头部 */
-}
-
-.layout-controls,
-.filter-controls,
-.scholar-type-controls {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  white-space: nowrap;
-}
-
-.layout-controls label,
-.filter-controls label {
-  font-size: 0.85rem;
-  color: rgba(255, 255, 255, 0.9);
-}
-
-#layout-select {
-  padding: 5px 8px;
-  border: 1px solid #ddd;
-  border-radius: var(--border-radius-sm);
-  background-color: white;
-  font-size: 0.85rem;
-  outline: none;
-}
-
-.relation-filters {
-  display: flex;
-  gap: 0.8rem;
-  padding: 0.2rem 0.5rem;
-  border-radius: var(--border-radius-sm);
-}
-
-.relation-filters label,
-.scholar-type-controls label {
-  font-size: 0.85rem;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 0.85rem;
-  white-space: nowrap;
-  color: var(--dark-color);
-}
-
-.relation-filters input[type="checkbox"],
-.scholar-type-controls input[type="checkbox"] {
-  margin: 0;
-  cursor: pointer;
-}
-
-/* 研究方向标签 */
-.interest-tag {
-  display: inline-block;
-  padding: 3px 8px;
-  margin: 2px 4px 2px 0;
-  background-color: #1a73e8;
-  color: white;
-  border-radius: 12px;
-  font-size: 0.9em;
-  font-weight: 500;
-  white-space: nowrap;
-}
-
-.interest-mini-tag {
-  display: inline-block;
-  background-color: rgba(52, 152, 219, 0.2);
-  color: var(--primary-color);
-  font-size: 0.7rem;
-  padding: 0.1rem 0.4rem;
-  border-radius: var(--border-radius-sm);
-  margin-right: 0.3rem;
-  white-space: nowrap;
-}
-
-.interest-more {
-  display: inline-block;
-  background-color: var(--gray-light);
-  color: var(--gray-dark);
-  font-size: 0.7rem;
-  padding: 0.1rem 0.4rem;
-  border-radius: var(--border-radius-sm);
-}
-
-.relation-interests {
-  margin: 0.3rem 0;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.3rem;
-}
-
-/* 详情面板 */
-.detail-panel {
-  width: 450px;
-  background-color: white;
-  box-shadow: -2px 0 5px rgba(0, 0, 0, 0.1);
-  overflow-y: auto;
-  padding: 20px;
-  position: relative;
-  z-index: 5;
-}
-
-.panel-header {
-  padding: 10px 15px;
-  display: flex;
-  justify-content: flex-end; /* 关闭按钮靠右 */
-  background-color: var(--gray-light);
-  border-bottom: 1px solid #ddd;
-}
-
-.panel-header h2 {
-  font-size: 1.2rem;
-  font-weight: 500;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-#close-panel {
-  cursor: pointer;
-  font-size: 1.5rem;
-  line-height: 1;
-  transition: color 0.2s;
-}
-
-#close-panel:hover {
-  color: var(--primary-color);
-}
-
-.panel-content {
-  padding: 1.2rem;
-  overflow-y: auto !important;
-  flex: 1;
-  height: 100%;
-  max-height: calc(100vh - 20px);
-}
-
-.basic-info {
-  margin-bottom: 1.8rem;
-  background-color: white;
-  padding: 1.5rem;
-  border-radius: var(--border-radius-md);
-  box-shadow: var(--shadow-sm);
-}
-
-.info-item {
-  margin-bottom: 10px;
-  line-height: 1.5;
-}
-
-.info-item:last-child {
-  margin-bottom: 0;
-}
-
-.info-item .label {
-  font-weight: 500;
-  color: var(--gray-dark);
-  margin-right: 8px;
-}
-
-.info-item .value {
-  display: block;
-  margin-top: 3px;
-  word-break: break-word;
-}
-
-.custom-fields {
-  background-color: white;
-  border-radius: var(--border-radius-sm);
-  padding: 0.5rem;
-  font-size: 0.9rem;
-}
-
-.custom-fields dl {
-  display: grid;
-  grid-template-columns: 1fr 2fr;
-  gap: 0.5rem;
-}
-
-.custom-fields dt {
-  font-weight: 600;
-  color: var(--dark-color);
-}
-
-.custom-fields dd {
-  color: #333;
-}
-
-/* 论文列表样式 */
-#publication-list,
-#related-scholars {
-  list-style: none;
-  background-color: var(--gray-light);
-  border-radius: var(--border-radius-md);
-  overflow: hidden;
-}
-
-#publication-list li {
-  padding: 0.8rem 1rem;
-  margin: 0.5rem;
-  border-radius: var(--border-radius-sm);
-  background-color: white;
-  box-shadow: var(--shadow-sm);
-  font-size: 0.9rem;
-  border-left: 3px solid var(--primary-color);
-}
-
-/* 论文标题样式 */
-.publication-title {
-  font-weight: 500;
-  margin-bottom: 0.5rem;
-  line-height: 1.4;
-  white-space: normal;
-  overflow: visible;
-  text-overflow: clip;
-}
-
-/* 论文发表信息样式 */
-.publication-venue {
-  font-size: 0.9rem;
-  color: var(--gray-dark);
-  white-space: normal;
-  overflow: visible;
-  text-overflow: clip;
-}
-
-/* 引用计数样式 */
-.citation-count {
-  display: inline-block;
-  margin-left: 8px;
-  color: #e67e22;
-  font-weight: 500;
-}
-
-.pub-meta {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  font-size: 0.85rem;
-  color: var(--gray-dark);
-}
-
-.venue-badge {
-  display: inline-block;
-  font-style: italic;
-  color: var(--gray-dark);
-  font-size: 0.75rem;
-  background-color: transparent;
+.btn-rounded.icon-btn {
+  width: 38px;
+  height: 38px;
   padding: 0;
+  border-radius: var(--border-radius-sm);
 }
 
-.pub-year {
-  color: var(--gray-dark);
-  font-weight: 500;
+.btn-rounded.dark-btn {
+  background-color: var(--dark-color);
+  color: white;
 }
 
-.pub-citations {
+.btn-rounded.light-btn {
+  background-color: var(--light-color);
+}
+
+/* 图标按钮 */
+.icon-btn {
+  width: 32px;
+  height: 32px;
   display: flex;
   align-items: center;
-  gap: 0.3rem;
-  color: #e67e22;
-  font-size: 0.8rem;
-}
-
-.no-pub {
-  color: var(--gray-dark);
-  text-align: center;
-  font-style: italic;
-  background-color: transparent !important;
-  box-shadow: none !important;
-  border-left: none !important;
-}
-
-/* 发表venues相关样式 */
-.publications h3,
-.relationships h3 {
-  font-size: 1.1rem;
-  color: var(--dark-color);
-  margin: 1.2rem 0 0.8rem;
-  padding-bottom: 0.5rem;
-  border-bottom: 2px solid #3182bd;
-}
-
-/* 相关学者列表样式更新 */
-#related-scholars li {
-  padding: 0.8rem 1rem;
-  margin: 0.5rem;
-  border-radius: var(--border-radius-sm);
-  background-color: white;
-  box-shadow: var(--shadow-sm);
+  justify-content: center;
+  border-radius: 50%;
   transition: all 0.2s;
   cursor: pointer;
-  border-left: 3px solid transparent;
 }
 
-#related-scholars li.primary-scholar {
-  border-left-color: #3182bd;
+.icon-btn:hover {
+  background-color: var(--gray-light);
 }
 
-#related-scholars li.secondary-scholar {
-  border-left-color: #9ecae1;
+/* ===== 4. 卡片组件 ===== */
+.card {
+  background-color: white;
+  border-radius: var(--border-radius-md);
+  padding: 1rem;
+  margin: 0 0 0.5rem 0;
+  box-shadow: var(--shadow-sm);
 }
 
-#related-scholars li:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
-}
-
-/* 关系徽章 - 合并重复定义 */
-.relation-badge {
-  display: inline-block;
-  padding: 2px 6px;
-  font-size: 0.8rem;
-  border-radius: 3px;
-  background-color: #f0f0f0;
-  color: #333;
-  margin: 0 5px;
-  border: 1px solid #ddd;
-  border-radius: var(--border-radius-sm);
-}
-
-/* 合并不同类型的徽章样式 */
-.relation-badge.relation-coauthor,
-.relation-badge.coauthor {
-  background-color: rgba(107, 174, 214, 0.2);
-  color: #fff;
-  border-color: #6baed6;
-}
-
-.relation-badge.relation-advisor,
-.relation-badge.advisor {
-  background-color: rgba(253, 141, 60, 0.2);
-  color: #fff;
-  border-color: #fd8d3c;
-}
-
-.relation-badge.relation-colleague,
-.relation-badge.colleague {
-  background-color: rgba(49, 163, 84, 0.2);
-  color: #fff;
-  border-color: #31a354;
-}
-
-/* 关系项样式改进 - 合并重复定义 */
-.relationship-item {
-  padding: 12px;
-  background-color: rgba(255, 255, 255, 0.6);
-  border-radius: 6px;
-  margin-bottom: 8px;
-  transition: all 0.2s;
-  border-bottom: 1px solid #f0f0f0;
+.card-header {
+  padding-bottom: 0.8rem;
+  margin-bottom: 0.8rem;
+  border-bottom: 1px solid #eee;
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 
-.relationship-item:hover {
-  background-color: white;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+.card-footer {
+  padding-top: 0.8rem;
+  margin-top: 0.8rem;
+  border-top: 1px solid #eee;
 }
 
-/* 合并relationship-detail样式 */
-.relationship-detail {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px;
-  flex: 1;
+/* ===== 5. 表单组件 ===== */
+.form-group {
+  margin-bottom: 1rem;
+  width: 100%;
 }
 
-/* 页脚 */
-footer {
-  background-color: var(--dark-color);
-  color: var(--light-color);
-  text-align: center;
+.form-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+  color: var(--dark-color);
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+  width: 100%;
   padding: 0.8rem;
-  font-size: 0.85rem;
+  border: 1px solid #ddd;
+  border-radius: var(--border-radius-sm);
+  font-size: 0.95rem;
 }
 
-/* 模态窗口样式 */
+.form-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+  margin-bottom: 15px;
+}
+
+.form-group-inline {
+  flex: 1;
+  min-width: 200px;
+  display: flex;
+  flex-direction: column;
+}
+
+.hint-text {
+  font-size: var(--font-size-xs);
+  color: var(--gray-dark);
+  margin-top: 0.25rem;
+  font-style: italic;
+}
+
+/* ===== 6. 标签组件 ===== */
+.tag {
+  display: inline-block;
+  padding: 3px 8px;
+  margin: 2px 4px 2px 0;
+  border-radius: var(--border-radius-sm);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  white-space: nowrap;
+  border: 1px solid #ddd;
+  background-color: #f0f0f0;
+  color: #333;
+  transition: all 0.2s ease;
+}
+
+.tag:hover {
+  background-color: #e5e5e5;
+}
+
+/* ===== 7. 状态消息 ===== */
+.status-message {
+  padding: 0.5rem 0;
+  font-size: var(--font-size-sm);
+}
+
+.status-error {
+  color: var(--warning-color);
+}
+
+.status-success {
+  color: var(--secondary-color);
+}
+
+.status-info {
+  color: var(--primary-color);
+}
+
+.status-indicator {
+  display: none;
+  padding: 6px 12px;
+  background-color: rgba(0, 0, 0, 0.7);
+  color: white;
+  border-radius: 4px;
+  font-size: var(--font-size-xs);
+  margin-bottom: 10px;
+  text-align: center;
+  animation: pulse 1.5s infinite;
+  width: 100%;
+}
+
+@keyframes pulse {
+  0% {
+    opacity: 0.7;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.7;
+  }
+}
+
+/* ===== 9. 模态框组件 ===== */
 .modal {
   display: none;
   position: fixed;
@@ -795,7 +409,7 @@ footer {
 }
 
 .modal-header h2 {
-  font-size: 1.3rem;
+  font-size: var(--font-size-lg);
   font-weight: 600;
 }
 
@@ -824,12 +438,55 @@ footer {
   border-top: 1px solid #ddd;
 }
 
-.status-message {
-  font-size: 0.9rem;
-  color: var(--gray-dark);
+/* ===== 10. 面板组件 ===== */
+.panel {
+  background-color: white;
+  border-radius: var(--border-radius-md);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
 }
 
-/* 管理面板Tab样式 */
+.panel-header {
+  padding: 1rem;
+  border-bottom: 1px solid #eee;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.panel-body {
+  padding: 1rem;
+  overflow-y: auto;
+}
+
+.panel-footer {
+  padding: 1rem;
+  border-top: 1px solid #eee;
+  background-color: var(--gray-light);
+}
+
+/* ===== 11. 列表组件 ===== */
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.list-item {
+  padding: 0.8rem;
+  border-bottom: 1px solid #f0f0f0;
+  transition: background-color 0.2s;
+}
+
+.list-item:hover {
+  background-color: var(--gray-light);
+}
+
+.list-item:last-child {
+  border-bottom: none;
+}
+
+/* ===== 12. 选项卡组件 ===== */
 .tabs {
   display: flex;
   gap: 0.5rem;
@@ -865,1057 +522,32 @@ footer {
   display: block;
 }
 
-/* 学者管理区域 */
-.section-header {
+/* ===== 13. 头部组件 ===== */
+header {
+  background-color: var(--dark-color);
+  color: white;
+  padding: 1rem 1.5rem;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 1.2rem;
-}
-
-.section-header h3 {
-  font-size: 1.2rem;
-  color: var(--dark-color);
-}
-
-.last-update {
-  font-size: 0.85rem;
-  color: var(--gray-dark);
-  background-color: var(--gray-light);
-  padding: 0.4rem 0.8rem;
-  border-radius: var(--border-radius-sm);
-}
-
-.scholar-add {
-  margin-bottom: 1.5rem;
-  display: flex;
-  flex-direction: column;
+  box-shadow: var(--shadow-md);
+  z-index: 10;
+  flex-wrap: wrap;
   gap: 0.8rem;
 }
 
-.scholar-add .form-group {
-  margin-bottom: 0.5rem;
-}
-
-.hint-text {
-  font-size: 0.8rem;
-  color: var(--gray-dark);
-  margin-top: 0.25rem;
-  font-style: italic;
-}
-
-.scholar-add input {
-  flex: 1;
-  padding: 0.8rem;
-  border: 1px solid #ddd;
-  border-radius: var(--border-radius-sm);
-  font-size: 0.95rem;
-}
-
-.scholar-batch {
-  margin-bottom: 1.5rem;
-}
-
-.scholar-batch textarea {
-  width: 100%;
-  height: 100px;
-  padding: 0.8rem;
-  border: 1px solid #ddd;
-  border-radius: var(--border-radius-sm);
-  font-size: 0.95rem;
-  resize: vertical;
-  margin-bottom: 0.5rem;
-}
-
-.refresh-data {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  margin-bottom: 1.5rem;
-  padding: 1rem;
-  background-color: var(--gray-light);
-  border-radius: var(--border-radius-md);
-}
-
-.checkbox-wrap {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.scholar-list-section h4,
-.relationship-list-section h4 {
-  font-size: 1.1rem;
-  color: var(--dark-color);
-  margin-bottom: 0.8rem;
-}
-
-.search-list-container {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.search-list-container input {
-  padding: 0.8rem;
-  border: 1px solid #ddd;
-  border-radius: var(--border-radius-sm);
-  font-size: 0.95rem;
-}
-
-.scholar-list,
-.relationship-list {
-  max-height: 300px;
-  overflow-y: scroll !important;
-  border: 1px solid #ddd;
-  border-radius: var(--border-radius-sm);
-  background-color: white;
-}
-
-.scholar-item,
-.relationship-item {
-  padding: 0.8rem;
-  border-bottom: 1px solid #f0f0f0;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.scholar-item:hover,
-.relationship-item:hover {
-  background-color: var(--gray-light);
-}
-
-.scholar-info {
-  flex: 1;
-}
-
-.scholar-name {
+header h1 {
+  font-size: var(--font-size-xl);
   font-weight: 600;
-  color: var(--dark-color);
+  white-space: nowrap;
 }
 
-.scholar-detail {
-  font-size: 0.8rem;
-  color: var(--gray-dark);
-  margin-top: 0.2rem;
-}
-
-.scholar-actions,
-.relationship-actions {
-  display: flex;
-  gap: 0.5rem;
-}
-
-/* 关系管理区域 */
-.relationship-add {
-  padding: 1.5rem;
-  background-color: #f7f7f7;
-  border-radius: 8px;
-}
-
-/* 将关系添加区域中的元素放在一行 */
-@media (min-width: 768px) {
-  .relationship-add {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: flex-end;
-    gap: 1rem;
-  }
-
-  .relationship-add .form-group {
-    flex: 1;
-    min-width: 150px;
-    margin-bottom: 1rem;
-  }
-
-  .relationship-add button {
-    flex-basis: 100%;
-    margin-top: 1rem;
-  }
-}
-
-.relationship-list-section {
-  margin-top: 1.5rem;
-}
-
-.relationship-list {
-  max-height: 300px;
-  overflow-y: auto;
-  border: 1px solid var(--border-color);
-  border-radius: var(--border-radius-md);
-}
-
-.relationship-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0.75rem 1rem;
-  border-bottom: 1px solid var(--border-color);
-  transition: background-color 0.2s;
-}
-
-.relationship-item:last-child {
-  border-bottom: none;
-}
-
-.relationship-item:hover {
-  background-color: var(--bg-light);
-}
-
-.relationship-info {
+.nav-actions {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  flex-wrap: wrap;
+  gap: 0.8rem;
 }
 
-.source-scholar,
-.target-scholar {
-  font-weight: 500;
-  color: var(--dark-color);
-}
-
-.relation-type {
-  background-color: var(--primary-color);
-  color: white;
-  padding: 2px 8px;
-  border-radius: var(--border-radius-sm);
-  font-size: 0.85rem;
-}
-
-.relation-arrow {
-  color: var(--gray-dark);
-  font-size: 0.9rem;
-}
-
-.delete-relation-btn {
-  background-color: var(--danger-pale);
-  color: var(--danger-color);
-  border: none;
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.delete-relation-btn:hover {
-  background-color: var(--danger-color);
-  color: white;
-}
-
-.empty-list {
-  padding: 1rem;
-  text-align: center;
-  color: var(--gray-dark);
-}
-
-/* 按钮样式 */
-.btn {
-  padding: 0.8rem 1.2rem;
-  border-radius: var(--border-radius-sm);
-  border: none;
-  font-size: 0.95rem;
-  cursor: pointer;
-  transition: all 0.2s;
-  background-color: var(--gray-light);
-  color: var(--dark-color);
-}
-
-.btn:hover {
-  background-color: #e0e0e0;
-}
-
-.btn-primary {
-  background-color: var(--primary-color);
-  color: white;
-}
-
-.btn-primary:hover {
-  background-color: var(--primary-dark);
-}
-
-.btn-warning {
-  background-color: var(--warning-color);
-  color: white;
-}
-
-.btn-warning:hover {
-  background-color: #c0392b;
-}
-
-.btn-sm {
-  padding: 0.4rem 0.8rem;
-  font-size: 0.85rem;
-}
-
-/* 图标按钮 */
-.icon-btn {
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  transition: all 0.2s;
-  cursor: pointer;
-}
-
-.icon-btn:hover {
-  background-color: var(--gray-light);
-}
-
-/* 徽章 */
-.relation-badge {
-  display: inline-block;
-  border-radius: var(--border-radius-sm);
-  padding: 0.2rem 0.5rem;
-  color: white;
-  font-size: 0.75rem;
-}
-
-.relation-badge.coauthor {
-  background-color: var(--primary-color);
-}
-
-.relation-badge.advisor {
-  background-color: var(--warning-color);
-}
-
-.relation-badge.colleague {
-  background-color: var(--secondary-color);
-}
-
-.relation-weight {
-  font-size: 0.75rem;
-  color: var(--gray-dark);
-  margin-left: 5px;
-}
-
-.secondary-badge {
-  display: inline-block;
-  background-color: var(--gray-color);
-  color: white;
-  font-size: 0.7rem;
-  padding: 0.2rem 0.5rem;
-  border-radius: var(--border-radius-sm);
-  margin-left: 5px;
-}
-
-.loading {
-  padding: 2rem;
-  text-align: center;
-  color: var(--gray-dark);
-}
-
-.tooltip {
-  display: inline-block;
-  width: 16px;
-  height: 16px;
-  line-height: 16px;
-  text-align: center;
-  border-radius: 50%;
-  background-color: rgba(255, 255, 255, 0.3);
-  color: white;
-  font-size: 11px;
-  cursor: help;
-  margin-left: 4px;
-}
-
-.tooltip:hover::after {
-  content: attr(title);
-  position: absolute;
-  background: var(--dark-color);
-  color: white;
-  padding: 0.5rem 0.8rem;
-  border-radius: var(--border-radius-sm);
-  font-size: 0.8rem;
-  max-width: 250px;
-  z-index: 10;
-  white-space: normal;
-  margin-left: 10px;
-  box-shadow: var(--shadow-md);
-}
-
-/* 修复关联学者样式 */
-.secondary-scholar {
-  background-color: var(--gray-light);
-  border-left: 3px solid var(--gray-color);
-}
-
-.primary-scholar {
-  border-left: 3px solid var(--primary-color);
-}
-
-/* 响应式设计 */
-@media (max-width: 768px) {
-  header {
-    flex-direction: column;
-    padding: 1rem;
-  }
-
-  header h1 {
-    margin-bottom: 0.5rem;
-  }
-
-  .nav-actions {
-    width: 100%;
-  }
-
-  .main-container {
-    flex-direction: column;
-    height: auto;
-  }
-
-  .graph-container {
-    height: 60vh;
-  }
-
-  .detail-panel {
-    width: 100%;
-    height: 40vh;
-    margin: 10px 0 0 0;
-  }
-
-  .graph-controls {
-    flex-direction: row;
-    padding: 0.5rem;
-  }
-
-  .modal-content {
-    width: 95%;
-    margin: 2% auto;
-  }
-
-  .relationship-add {
-    flex-direction: column;
-  }
-
-  .form-group {
-    width: 100%;
-  }
-}
-
-/* 发表场所标签 */
-.pub-venue {
-  margin: 0.5rem 0;
-  font-size: 0.85rem;
-  color: var(--gray-dark);
-}
-
-.pub-citations {
-  font-size: 0.8rem;
-  color: var(--gray-dark);
-  display: flex;
-  align-items: center;
-  gap: 0.3rem;
-}
-
-/* .pub-citations::before {
-    content: "\f091";
-    font-family: "Font Awesome 5 Free";
-    font-weight: 900;
-    color: var(--accent-color);
-} */
-
-/* 状态消息 */
-.status-message {
-  padding: 0.5rem 0;
-  font-size: 0.9rem;
-}
-
-.status-error {
-  color: var(--warning-color);
-}
-
-.status-success {
-  color: var(--secondary-color);
-}
-
-.status-info {
-  color: var(--primary-color);
-}
-
-/* 自定义字段编辑 */
-.custom-fields-form {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.custom-field-group {
-  background-color: var(--gray-light);
-  padding: 1rem;
-  border-radius: var(--border-radius-sm);
-}
-
-.field-header {
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 0.5rem;
-}
-
-.field-key,
-.field-value {
-  padding: 0.6rem;
-  border: 1px solid #ddd;
-  border-radius: var(--border-radius-sm);
-  width: 100%;
-}
-
-.delete-field {
-  background-color: transparent;
-  color: var(--gray-dark);
-  border: none;
-  cursor: pointer;
-  transition: color 0.2s;
-}
-
-.delete-field:hover {
-  color: var(--warning-color);
-}
-
-/* 空列表状态 */
-.empty-list {
-  padding: 2rem;
-  text-align: center;
-  color: var(--gray-dark);
-  font-style: italic;
-}
-
-/* Scholar按钮和链接 */
-.scholar-buttons {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  margin-top: 0.8rem;
-}
-
-.scholar-button {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  background-color: var(--primary-color);
-  color: white;
-  padding: 0.5rem 0.8rem;
-  border-radius: var(--border-radius-sm);
-  font-size: 0.85rem;
-  text-decoration: none;
-  border: none;
-  cursor: pointer;
-  transition: background-color 0.2s;
-}
-
-.scholar-button:hover {
-  background-color: var(--primary-dark);
-}
-
-.scholar-link {
-  color: var(--primary-color);
-  text-decoration: none;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
-  transition: color 0.2s;
-}
-
-.scholar-link:hover {
-  color: var(--primary-dark);
-  text-decoration: underline;
-}
-
-/* 相关学者条目样式 */
-.relation-name {
-  font-weight: 600;
-  margin-bottom: 0.3rem;
-  color: var(--dark-color);
-}
-
-.relation-type {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 0.3rem;
-  margin: 0.3rem 0;
-}
-
-.relation-affiliation {
-  font-size: 0.8rem;
-  color: var(--gray-dark);
-  margin-top: 0.3rem;
-}
-
-/* 添加学者标签样式 */
-.scholar-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.3rem;
-  margin-top: 0.5rem;
-}
-
-.scholar-tag {
-  display: inline-block;
-  background-color: rgba(49, 130, 189, 0.1);
-  color: var(--primary-color);
-  font-size: 0.75rem;
-  padding: 0.1rem 0.5rem;
-  border-radius: var(--border-radius-sm);
-  border: 1px solid rgba(49, 130, 189, 0.3);
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.scholar-tag:hover {
-  background-color: rgba(49, 130, 189, 0.2);
-}
-
-.tag-add-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background-color: var(--gray-light);
-  color: var(--gray-dark);
-  border: 1px solid var(--gray-color);
-  font-size: 0.7rem;
-  cursor: pointer;
-  margin-left: 0.3rem;
-}
-
-.tag-add-btn:hover {
-  background-color: var(--primary-color);
-  color: white;
-  border-color: var(--primary-color);
-}
-
-/* 特定标签类型的样式 */
-.scholar-tag[data-tag="SameField"],
-.filter-tag[data-tag="SameField"] {
-  background-color: rgba(46, 204, 113, 0.1);
-  color: #27ae60;
-  border-color: rgba(46, 204, 113, 0.3);
-}
-
-.scholar-tag[data-tag="Interested"],
-.filter-tag[data-tag="Interested"] {
-  background-color: rgba(155, 89, 182, 0.1);
-  color: #9b59b6;
-  border-color: rgba(155, 89, 182, 0.3);
-}
-
-.scholar-tag[data-tag="HighImpact"],
-.filter-tag[data-tag="HighImpact"] {
-  background-color: rgba(192, 57, 43, 0.1);
-  color: #c0392b;
-  border-color: rgba(192, 57, 43, 0.3);
-}
-
-/* 添加标签高亮样式 */
-.scholar-tag.highlighted {
-  box-shadow: 0 0 5px rgba(49, 130, 189, 0.5);
-  transform: scale(1.05);
-}
-
-/* 添加标签筛选控制区 */
-.tag-filters {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 8px;
-  background: transparent;
-  border: none;
-  padding: 0;
-}
-
-/* 过滤标签容器 */
-.filter-tags-container {
-  display: flex;
-  flex-wrap: wrap;
-  flex-direction: row;
-  align-items: center;
-  gap: 6px;
-  margin: 0;
-}
-
-/* 筛选标签样式 */
-.filter-tag {
-  cursor: pointer;
-  transition: all 0.2s ease;
-  padding: 3px 8px;
-  opacity: 0.7;
-  border: 1px solid rgba(49, 130, 189, 0.3);
-  font-size: 0.85rem; /* 统一字体大小 */
-  background-color: rgba(49, 130, 189, 0.1);
-  color: var(--primary-color);
-  border-radius: var(--border-radius-sm);
-}
-
-.filter-tag:hover {
-  transform: translateY(-2px);
-  opacity: 0.9;
-}
-
-.filter-tag.active {
-  opacity: 1;
-  border-width: 2px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  transform: translateY(-1px);
-}
-
-/* 为不同标签类型设置激活状态样式 */
-.filter-tag.active[data-tag="SameField"] {
-  background-color: rgba(46, 204, 113, 0.5);
-  color: #27ae60;
-  border-color: #27ae60;
-}
-
-.filter-tag.active[data-tag="Interested"] {
-  background-color: rgba(155, 89, 182, 0.5);
-  color: #8e44ad;
-  border-color: #8e44ad;
-}
-
-.filter-tag.active[data-tag="HighImpact"] {
-  background-color: rgba(192, 57, 43, 0.5);
-  color: #c0392b;
-  border-color: #c0392b;
-}
-
-/* 重新布局按钮 */
-.global-view-btn {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  background-color: rgba(255, 255, 255, 0.15);
-  color: white;
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  border-radius: var(--border-radius-sm);
-  padding: 0.4rem 0.8rem;
-  font-size: 0.85rem;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.global-view-btn:hover {
-  background-color: rgba(255, 255, 255, 0.25);
-}
-
-.global-view-btn.hidden {
-  display: none;
-}
-
-/* 标签管理弹窗 */
-.tag-dialog {
-  position: fixed;
-  z-index: 200;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  background-color: white;
-  border-radius: var(--border-radius-md);
-  box-shadow: var(--shadow-lg);
-  width: 90%;
-  max-width: 500px;
-  max-height: 90vh;
-  overflow-y: auto;
-  display: none;
-}
-
-.tag-dialog.active {
-  display: block;
-}
-
-.tag-dialog-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1rem;
-  background-color: var(--primary-color);
-  color: white;
-  border-radius: var(--border-radius-md) var(--border-radius-md) 0 0;
-}
-
-.tag-dialog-title {
-  font-size: 1.2rem;
-  font-weight: 500;
-}
-
-.tag-dialog-close {
-  font-size: 1.5rem;
-  line-height: 1;
-  cursor: pointer;
-}
-
-.tag-dialog-body {
-  padding: 1rem;
-}
-
-.tag-dialog-footer {
-  padding: 1rem;
-  background-color: var(--gray-light);
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.5rem;
-  border-radius: 0 0 var(--border-radius-md) var(--border-radius-md);
-}
-
-.predefined-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  margin-bottom: 1rem;
-  padding: 1rem;
-  background-color: var(--gray-light);
-  border-radius: var(--border-radius-sm);
-}
-
-.add-custom-tag {
-  display: flex;
-  gap: 0.5rem;
-  margin-top: 1rem;
-}
-
-.add-custom-tag input {
-  flex: 1;
-  padding: 0.5rem;
-  border: 1px solid #ddd;
-  border-radius: var(--border-radius-sm);
-  font-size: 0.9rem;
-}
-
-/* 修改控制按钮样式以区分于原有控制元素 */
-.control-btn {
-  background: #fff;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  padding: 6px 12px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s;
-  margin-top: 5px;
-}
-
-.control-btn:hover {
-  background: #f5f5f5;
-  border-color: #ccc;
-}
-
-.control-btn i {
-  font-size: 16px;
-  color: #666;
-}
-
-/* 初始化数据库区域 */
-.init-database,
-.migrate-data {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  margin: 1rem 0;
-  padding: 1rem;
-  background-color: #ffeeee;
-  border-radius: var(--border-radius-md);
-  border-left: 4px solid var(--warning-color);
-}
-
-.warning-text {
-  font-size: 0.85rem;
-  color: var(--warning-color);
-  font-style: italic;
-}
-
-.btn-danger {
-  background-color: var(--warning-color);
-  color: white;
-}
-
-.btn-danger:hover {
-  background-color: #c0392b;
-}
-
-/* 学者头像样式 */
-.info-header {
-  display: flex;
-  gap: 15px;
-  margin-bottom: 15px;
-}
-
-/* 合并重复的学者头像容器样式 */
-.scholar-avatar-container {
-  width: 80px;
-  height: 80px;
-  border-radius: 50%;
-  overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  flex-shrink: 0;
-  background-color: #f0f0f0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 2px solid var(--primary-color);
-  margin-right: 15px;
-}
-
-#scholar-avatar {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.scholar-basic-info {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-}
-
-/* 学者详情头部布局 */
-.scholar-header {
-  display: flex;
-  align-items: center;
-  margin-bottom: 20px;
-  padding-bottom: 15px;
-  border-bottom: 1px solid #eee;
-}
-
-/* 合并重复的scholar-name样式 */
-#scholar-name {
-  font-size: 1.6rem;
-  margin: 0;
-  color: var(--dark-color);
-  font-weight: 600;
-}
-
-/* 重新设计的额外信息区域 */
-.custom-fields-container {
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
-  background-color: #f9f9f9;
-  border-radius: var(--border-radius-md);
-  padding: 15px;
-  margin-top: 8px;
-}
-
-.custom-fields-content {
-  font-size: 0.9rem;
-  color: var(--gray-dark);
-  line-height: 1.5;
-  margin-top: 10px;
-}
-
-/* 修改按钮样式使其更突出 */
-.scholar-buttons {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin: 0;
-}
-
-.scholar-button {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  background-color: var(--primary-color);
-  color: white;
-  padding: 8px 16px;
-  border-radius: var(--border-radius-sm);
-  font-size: 0.9rem;
-  text-decoration: none;
-  border: none;
-  cursor: pointer;
-  transition: background-color 0.2s, transform 0.1s;
-  flex: 1;
-  justify-content: center;
-  min-width: 150px;
-}
-
-.scholar-button:hover {
-  background-color: var(--primary-dark);
-  transform: translateY(-2px);
-}
-
-/* 为不同类型的按钮设置不同的颜色 */
-.scholar-button.gs-button {
-  background-color: #4285f4; /* Google Scholar蓝色 */
-}
-
-.scholar-button.gs-button:hover {
-  background-color: #3367d6;
-}
-
-.scholar-button.fetch-button {
-  background-color: var(--secondary-color);
-}
-
-.scholar-button.fetch-button:hover {
-  background-color: #2a8a46;
-}
-
-/* 其他细节优化 */
-.basic-info {
-  margin-bottom: 1.8rem;
-  background-color: white;
-  padding: 1.5rem;
-  border-radius: var(--border-radius-md);
-  box-shadow: var(--shadow-sm);
-}
-
-.scholar-header {
-  display: flex;
-  align-items: center;
-  margin-bottom: 20px;
-  padding-bottom: 15px;
-  border-bottom: 1px solid #eee;
-}
-
-.scholar-avatar-container {
-  width: 80px;
-  height: 80px;
-  border-radius: 50%;
-  overflow: hidden !important;
-  margin-right: 15px;
-  flex-shrink: 0;
-  border: 2px solid var(--primary-color);
-}
-
-#scholar-name {
-  font-size: 1.6rem;
-  margin: 0;
-  color: var(--dark-color);
-  font-weight: 600;
-}
-
-/* 全局：确保文本不被省略（除非特殊情况下需要省略） */
-.no-ellipsis,
-#scholar-name,
-#detail-panel .value,
-.publication-title,
-.publication-venue,
-.scholar-tag,
-.relation-name,
-.relation-type,
-.relation-type span,
-.relation-interests span,
-.relation-affiliation,
-.interest-tag,
-.interest-mini-tag,
-.custom-fields-content dt,
-.custom-fields-content dd {
-  white-space: normal !important;
-  overflow: visible !important;
-  text-overflow: clip !important;
-}
-
-/* 顶栏按钮样式 */
 .nav-btn {
   background-color: var(--dark-color);
   color: white;
@@ -1936,7 +568,580 @@ footer {
   transform: rotate(15deg);
 }
 
-/* 筛选面板样式 */
+/* ===== 14. 搜索组件 ===== */
+.search-container {
+  display: flex;
+  align-items: center;
+  background-color: rgba(255, 255, 255, 0.15);
+  border-radius: var(--border-radius-md);
+  height: 40px;
+  transition: all 0.3s;
+  position: relative;
+}
+
+.search-container:hover {
+  background-color: rgba(255, 255, 255, 0.25);
+}
+
+#search-input {
+  padding: 8px 12px;
+  border: none;
+  border-radius: var(--border-radius-md) 0 0 var(--border-radius-md);
+  width: 250px;
+  height: -webkit-fill-available;
+  font-size: var(--font-size-sm);
+  background-color: rgba(255, 255, 255, 0.9);
+  color: var(--dark-color);
+}
+
+/* 搜索结果样式 */
+.search-results {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  width: 100%;
+  background-color: white;
+  border-radius: var(--border-radius-md);
+  box-shadow: var(--shadow-md);
+  max-height: 300px;
+  overflow-y: scroll !important;
+  margin-top: 5px;
+  z-index: 30 !important;
+}
+
+.search-result-item {
+  padding: 10px 15px;
+  cursor: pointer;
+  border-bottom: 1px solid #f0f0f0;
+  transition: background-color 0.2s;
+}
+
+.search-result-item:hover {
+  background-color: var(--gray-light);
+}
+
+.search-result-item:last-child {
+  border-bottom: none;
+}
+
+.result-name {
+  font-weight: 500;
+  color: var(--dark-color);
+}
+
+.result-type {
+  font-size: var(--font-size-xs);
+  color: var(--gray-dark);
+}
+
+.more-results {
+  padding: 8px 15px;
+  text-align: center;
+  font-size: var(--font-size-xs);
+  color: var(--gray-dark);
+  background-color: var(--gray-light);
+}
+
+.no-results {
+  padding: 15px;
+  text-align: center;
+  color: var(--gray-dark);
+}
+
+/* ===== 15. 图谱组件 ===== */
+.graph-container {
+  position: relative;
+  flex: 1;
+  background-color: #f9f9f9;
+  border-radius: 6px;
+  overflow: hidden;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  height: auto;
+  width: 70%; /* 设置宽度为70% */
+}
+
+#cy {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1;
+  background-color: #f9f9f9;
+}
+
+.graph-controls {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background-color: rgba(255, 255, 255, 0.85);
+  padding: 10px;
+  border-radius: 8px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
+}
+
+.graph-controls button,
+.graph-btn {
+  background-color: white;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 8px 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.9rem;
+  color: #333;
+  transition: all 0.2s;
+  width: 120px;
+}
+
+.graph-controls button:hover,
+.graph-btn:hover {
+  background-color: #f5f5f5;
+  transform: translateY(-2px);
+  box-shadow: 0 3px 5px rgba(0, 0, 0, 0.15);
+}
+
+.graph-controls button i,
+.graph-btn i {
+  margin-right: 5px;
+}
+
+/* 悬浮添加按钮样式 */
+.floating-btn {
+  position: absolute;
+  bottom: 25px;
+  right: 25px;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background-color: var(--primary-color);
+  color: white;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25);
+  z-index: 20;
+  transition: all 0.3s ease;
+}
+
+.floating-btn:hover {
+  transform: scale(1.1);
+  background-color: #333;
+  box-shadow: 0 6px 15px rgba(0, 0, 0, 0.3);
+}
+
+.floating-btn i {
+  font-size: 24px;
+}
+
+/* ===== 16. 详情面板 ===== */
+.detail-panel {
+  width: 450px;
+  background-color: white;
+  box-shadow: -2px 0 5px rgba(0, 0, 0, 0.1);
+  overflow-y: auto;
+  padding: 20px;
+  position: relative;
+  z-index: 5;
+}
+
+.panel-content {
+  padding: 0.8rem;
+  overflow-y: auto !important;
+  flex: 1;
+  height: 100%;
+  max-height: calc(100vh - 20px);
+}
+
+.basic-info {
+  margin-bottom: 1.8rem;
+  background-color: white;
+  padding: 1.5rem;
+  border-radius: var(--border-radius-md);
+  box-shadow: var(--shadow-sm);
+}
+
+.info-item {
+  margin-bottom: 10px;
+  line-height: 1.5;
+}
+
+.info-item:last-child {
+  margin-bottom: 0;
+}
+
+.info-item .label {
+  font-weight: 500;
+  color: var(--gray-dark);
+  margin-right: 8px;
+}
+
+.info-item .value {
+  display: block;
+  margin-top: 3px;
+  word-break: break-word;
+}
+
+/* ===== 17. 学者信息组件 ===== */
+.scholar-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid #eee;
+}
+
+.scholar-avatar-container {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  overflow: hidden !important;
+  margin-right: 15px;
+  flex-shrink: 0;
+  border: 2px solid var(--primary-color);
+}
+
+#scholar-avatar {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+#scholar-name {
+  font-size: var(--font-size-xl);
+  margin: 0;
+  color: var(--dark-color);
+  font-weight: 600;
+}
+
+.scholar-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 5px;
+}
+
+.scholar-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background-color: #5a5a5a;
+  color: white;
+  padding: 8px 16px;
+  border-radius: var(--border-radius-sm);
+  font-size: 0.9rem;
+  text-decoration: none;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.2s, transform 0.1s;
+  flex: 1;
+  justify-content: center;
+  min-width: 50px;
+}
+
+.scholar-button:hover {
+  background-color: #333;
+  transform: translateY(-2px);
+}
+
+.scholar-button.disabled {
+  background-color: #9ca3af !important;
+  color: #f3f4f6;
+  cursor: not-allowed;
+  opacity: 0.7;
+  transform: none !important;
+}
+
+/* ===== 18. 研究方向标签 ===== */
+.interest-tag,
+.scholar-tag,
+.tag {
+  display: inline-block;
+  padding: 3px 8px;
+  margin: 2px 4px 2px 0;
+  background-color: #f0f0f0;
+  color: #333;
+  border-radius: var(--border-radius-sm);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  white-space: nowrap;
+  border: 1px solid #ddd;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.interest-tag:hover,
+.scholar-tag:hover,
+.tag:hover {
+  background-color: #e5e5e5;
+}
+
+.interest-mini-tag {
+  display: inline-block;
+  background-color: #f0f0f0;
+  color: #333;
+  font-size: var(--font-size-xs);
+  padding: 0.1rem 0.4rem;
+  border-radius: var(--border-radius-sm);
+  margin-right: 0.3rem;
+  white-space: nowrap;
+  border: 1px solid #ddd;
+}
+
+.interest-more {
+  display: inline-block;
+  background-color: var(--gray-light);
+  color: var(--gray-dark);
+  font-size: var(--font-size-xs);
+  padding: 0.1rem 0.4rem;
+  border-radius: var(--border-radius-sm);
+}
+
+/* ===== 19. 学者标签样式 ===== */
+.scholar-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin-top: 0.5rem;
+}
+
+/* ===== 20. 论文组件 ===== */
+.publications h3,
+.relationships h3 {
+  font-size: var(--font-size-md);
+  color: var(--dark-color);
+  margin: 1.2rem 0 0.8rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid #3182bd;
+}
+
+#publication-list,
+#related-scholars {
+  list-style: none;
+  padding: 0.3rem;
+  background-color: var(--gray-light);
+  /* border-radius: var(--border-radius-md); */
+  overflow: hidden;
+}
+
+#publication-list li {
+  padding: 0.8rem 1rem;
+  margin: 0.5rem;
+  border-radius: var(--border-radius-sm);
+  background-color: white;
+  box-shadow: var(--shadow-sm);
+  font-size: var(--font-size-sm);
+  border-left: 3px solid var(--primary-color);
+}
+
+.publication-title,
+.pub-title {
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+  line-height: 1.4;
+  color: var(--dark-color);
+}
+
+.publication-venue,
+.pub-venue {
+  font-size: var(--font-size-sm);
+  color: var(--gray-dark);
+  font-style: italic;
+  margin-bottom: 5px;
+}
+
+.citation-count {
+  display: inline-block;
+  margin-left: 8px;
+  color: var(--gray-dark);
+  font-weight: 500;
+}
+
+.pub-meta,
+.pub-citation {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  font-size: var(--font-size-xs);
+  color: var(--gray-dark);
+}
+
+.venue-badge {
+  display: inline-block;
+  font-style: italic;
+  color: var(--gray-dark);
+  font-size: var(--font-size-xs);
+  background-color: transparent;
+  padding: 0;
+}
+
+.pub-year {
+  color: var(--gray-dark);
+  font-weight: 500;
+}
+
+.no-pub {
+  color: var(--gray-dark);
+  text-align: center;
+  font-style: italic;
+  background-color: transparent !important;
+  box-shadow: none !important;
+  border-left: none !important;
+}
+
+/* ===== 21. 关系组件 ===== */
+#related-scholars li {
+  padding: 0.8rem 1rem;
+  margin: 0.5rem;
+  border-radius: var(--border-radius-sm);
+  background-color: white;
+  box-shadow: var(--shadow-sm);
+  transition: all 0.2s;
+  cursor: pointer;
+  border-left: 3px solid transparent;
+}
+
+#related-scholars li.primary-scholar {
+  border-left-color: #3182bd;
+}
+
+#related-scholars li.secondary-scholar {
+  border-left-color: #9ecae1;
+}
+
+#related-scholars li:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.relation-badge {
+  display: inline-block;
+  padding: 2px 6px;
+  font-size: var(--font-size-xs);
+  border-radius: var(--border-radius-sm);
+  background-color: #f0f0f0;
+  color: #333;
+  margin: 0 5px;
+  border: 1px solid #ddd;
+}
+
+.relationship-item {
+  padding: 12px;
+  background-color: rgba(255, 255, 255, 0.6);
+  border-radius: 6px;
+  margin-bottom: 8px;
+  transition: all 0.2s;
+  border-bottom: 1px solid #f0f0f0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.relationship-item:hover {
+  background-color: white;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.relationship-detail {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  flex: 1;
+}
+
+.relation-name {
+  font-weight: 600;
+  margin-bottom: 0.3rem;
+  color: var(--dark-color);
+}
+
+.relation-type {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin: 0.3rem 0;
+}
+
+.relation-affiliation {
+  font-size: var(--font-size-xs);
+  color: var(--gray-dark);
+  margin-top: 0.3rem;
+}
+
+.relation-interests {
+  margin: 0.3rem 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.relationship-type {
+  background-color: #f0f0f0;
+  color: #333;
+  padding: 3px 8px;
+  border-radius: var(--border-radius-sm);
+  font-size: var(--font-size-xs);
+  display: inline-block;
+  max-width: 100%;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+  text-align: center;
+  border: 1px solid #ddd;
+  margin-left: 10px;
+}
+
+.multi-relationship {
+  background-color: #e0e0e0;
+  color: #555;
+}
+
+.relationship-add {
+  padding: 1.5rem;
+  background-color: #f7f7f7;
+  border-radius: 8px;
+}
+
+@media (min-width: 768px) {
+  .relationship-add {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 1rem;
+  }
+
+  .relationship-add .form-group {
+    flex: 1;
+    min-width: 150px;
+    margin-bottom: 1rem;
+  }
+
+  .relationship-add button {
+    flex-basis: 100%;
+    margin-top: 1rem;
+  }
+}
+
+.related-scholars-list {
+  margin-top: 10px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 10px;
+}
+
+/* ===== 22. 筛选面板 ===== */
 .filter-panel {
   position: fixed;
   top: 50%;
@@ -1963,18 +1168,16 @@ footer {
   visibility: visible;
 }
 
-/* 筛选内容区域 */
 #filter-panel .modal-body {
   flex: 1;
   overflow-y: scroll !important;
   padding: 1.5rem;
 }
 
-/* 筛选标题样式 */
 #filter-panel h3 {
   margin-top: 1rem;
   margin-bottom: 1rem;
-  font-size: 1.2rem;
+  font-size: var(--font-size-md);
   color: var(--primary-color);
   font-weight: 600;
   border-bottom: 2px solid var(--primary-color);
@@ -1984,17 +1187,15 @@ footer {
 #filter-panel h4 {
   margin-top: 0.8rem;
   margin-bottom: 0.8rem;
-  font-size: 1rem;
+  font-size: var(--font-size-base);
   color: var(--dark-color);
 }
 
-/* 筛选部分样式 */
 #filter-panel .filter-section {
   margin-bottom: 1.2rem;
   padding-bottom: 0.5rem;
 }
 
-/* 添加分割线样式 */
 .filter-divider {
   border: 0;
   height: 1px;
@@ -2002,93 +1203,6 @@ footer {
   margin: 1rem 0;
 }
 
-/* 并排表单行样式 */
-.form-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 15px;
-  margin-bottom: 15px;
-}
-
-.form-group-inline {
-  flex: 1;
-  min-width: 200px;
-  display: flex;
-  flex-direction: column;
-}
-
-.form-group-inline label {
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: var(--dark-color);
-  margin-bottom: 5px;
-}
-
-.form-group-inline input,
-.form-group-inline select {
-  padding: 0.7rem;
-  border: 1px solid #ddd;
-  border-radius: var(--border-radius-sm);
-  font-size: 0.9rem;
-}
-
-/* 年份范围调整 */
-.year-range {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.year-range input {
-  flex: 1;
-  max-width: 120px;
-}
-
-.year-separator {
-  color: var(--gray-dark);
-}
-
-/* 筛选状态消息 */
-#filter-status {
-  flex: 1;
-  text-align: left;
-  font-size: 0.9rem;
-}
-
-/* 表单组样式调整，减小垂直间距 */
-#filter-panel .form-group {
-  margin-bottom: 12px;
-}
-
-#filter-panel input[type="text"],
-#filter-panel input[type="number"],
-#filter-panel select {
-  width: 100%;
-  padding: 0.7rem;
-  border: 1px solid #ddd;
-  border-radius: var(--border-radius-sm);
-  font-size: 0.95rem;
-  background-color: white;
-}
-
-/* 响应式调整 */
-@media (max-width: 768px) {
-  .filter-panel {
-    width: 95%;
-    max-height: 95vh;
-  }
-
-  .form-row {
-    flex-direction: column;
-    gap: 10px;
-  }
-
-  .form-group-inline {
-    width: 100%;
-  }
-}
-
-/* 筛选面板遮罩层 */
 .filter-overlay {
   display: none;
   position: fixed;
@@ -2105,7 +1219,6 @@ footer {
   display: block;
 }
 
-/* 滑块容器样式 */
 .slider-container {
   display: flex;
   align-items: center;
@@ -2122,12 +1235,13 @@ footer {
   min-width: 20px;
   text-align: center;
 }
+
 .filters-section {
   display: flex;
   flex-direction: row;
   gap: 10px;
 }
-/* 筛选项样式 */
+
 .filter-item {
   display: flex;
   align-items: center;
@@ -2143,39 +1257,6 @@ footer {
   width: 16px;
   height: 16px;
   cursor: pointer;
-}
-
-/* 状态指示器 */
-.status-indicator {
-  display: none;
-  padding: 6px 12px;
-  background-color: rgba(0, 0, 0, 0.7);
-  color: white;
-  border-radius: 4px;
-  font-size: 0.85rem;
-  margin-bottom: 10px;
-  text-align: center;
-  animation: pulse 1.5s infinite;
-  width: 100%;
-}
-
-@keyframes pulse {
-  0% {
-    opacity: 0.7;
-  }
-  50% {
-    opacity: 1;
-  }
-  100% {
-    opacity: 0.7;
-  }
-}
-
-/* 自定义筛选条件样式 */
-.add-filter-row {
-  margin-top: 15px;
-  display: flex;
-  justify-content: center;
 }
 
 .custom-filter-item {
@@ -2233,590 +1314,407 @@ footer {
   color: var(--warning-color);
 }
 
-.filter-type-label {
-  position: absolute;
-  top: 10px;
-  left: 10px;
-  font-size: 0.8rem;
-  color: var(--gray-dark);
-}
-
-.filter-content {
-  width: 100%;
-  margin-top: 20px;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-/* 筛选条件类型指示器 */
-.custom-filter-item[data-filter-type="scholar"] {
-  border-left-color: var(--primary-color);
-}
-
-.custom-filter-item[data-filter-type="publication"] {
-  border-left-color: var(--secondary-color);
-}
-
-.custom-filter-item[data-filter-type="institution"] {
-  border-left-color: var(--accent-color);
-}
-
-/* 筛选条件行样式 */
-.filter-condition-row {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 10px;
-  width: 100%;
-}
-
-.filter-dimension-select {
-  flex: 3;
-  min-width: 200px;
-}
-
-.filter-operator-select {
-  flex: 1;
-  min-width: 120px;
-}
-
-.filter-value-input {
-  width: 100%;
-  min-width: 150px;
-}
-
-/* 优化论文样式 */
-.publication-item {
-  margin-bottom: 12px;
-  padding-bottom: 10px;
-  border-bottom: 1px solid #eee;
-}
-
-.publication-title {
-  font-weight: 500;
+/* 筛选标签样式 */
+.filter-tag {
+  cursor: pointer;
+  transition: all 0.2s ease;
+  padding: 3px 8px;
+  opacity: 0.8;
+  border: 1px solid #ddd;
+  font-size: 0.85rem;
+  background-color: #f0f0f0;
   color: #333;
-  margin-bottom: 4px;
-}
-
-.publication-details {
-  font-size: 0.9em;
-  color: #666;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-}
-
-.publication-details .venue {
-  margin-right: 8px;
-  font-style: italic;
-}
-
-.publication-details .year {
-  margin-right: 8px;
-}
-
-.publication-details .citations {
-  color: #1a73e8;
-  font-weight: 500;
-}
-
-.publication-details .citations i {
-  margin-right: 2px;
-}
-
-/* 选项卡样式 */
-.add-manage-tabs {
-  display: flex;
-  border-bottom: 1px solid var(--border-color);
-  margin-bottom: 1.5rem;
-}
-
-.tab-button {
-  padding: 10px 20px;
-  border: none;
-  background: var(--bg-light);
-  cursor: pointer;
-  font-size: 0.95rem;
-  border-radius: var(--border-radius-md) var(--border-radius-md) 0 0;
-  margin-right: 5px;
-  transition: all 0.2s ease;
-}
-
-.tab-button:hover {
-  background-color: var(--gray-light);
-}
-
-.tab-button.active {
-  background-color: var(--primary-color);
-  color: white;
-  font-weight: 500;
-}
-
-.tab-panel {
-  display: none;
-  padding: 15px 0;
-}
-
-.tab-panel.active {
-  display: block;
-  animation: fadeIn 0.3s;
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-/* 添加学者按钮 - 悬浮在图表右下角 */
-.add-scholar-floating-btn {
-  position: absolute;
-  bottom: 25px;
-  right: 25px;
-  width: 60px;
-  height: 60px;
-  background-color: var(--primary-color);
-  color: white;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 24px;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
-  border: none;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  z-index: 100;
-}
-
-.add-scholar-floating-btn:hover {
-  background-color: var(--primary-dark);
-  transform: translateY(-3px);
-  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.25);
-}
-
-/* 添加学者面板样式优化 */
-#add-scholar-modal .modal-content {
-  max-width: 800px; /* 控制最大宽度 */
-}
-
-/* 改进表单布局 */
-.scholar-add {
-  display: flex;
-  flex-direction: column;
-  gap: 1.2rem;
-  margin-bottom: 2rem;
-}
-
-.scholar-add > div {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 1rem;
-  width: 100%;
-}
-
-@media (min-width: 768px) {
-  .scholar-add > div {
-    grid-template-columns: 1fr 1fr; /* 在大屏幕上并排显示输入框 */
-  }
-}
-
-/* 统一表单元素样式 */
-.form-group {
-  margin-bottom: 1rem;
-  width: 100%;
-}
-
-.form-group label {
-  display: block;
-  margin-bottom: 0.5rem;
-  font-weight: 500;
-  color: var(--dark-color);
-}
-
-.form-group input,
-.form-group select,
-.form-group textarea {
-  width: 100%;
-  padding: 0.8rem;
-  border: 1px solid #ddd;
   border-radius: var(--border-radius-sm);
-  font-size: 0.95rem;
 }
 
-/* 修正批量添加区域 */
-.scholar-batch {
-  margin-top: 1.5rem;
-  margin-bottom: 1.5rem;
-  border-top: 1px solid #eee;
-  padding-top: 1.5rem;
+.filter-tag:hover {
+  transform: translateY(-2px);
+  opacity: 1;
 }
 
-.scholar-batch h3 {
-  margin-bottom: 1rem;
-  font-size: 1.1rem;
-  color: var(--dark-color);
+.filter-tag.active {
+  opacity: 1;
+  border-width: 2px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transform: translateY(-1px);
+  background-color: #e0e0e0;
 }
 
-.scholar-batch textarea {
-  min-height: 120px;
-}
-
-/* 统一按钮样式和位置 */
-#add-new-scholar-btn,
-#add-batch-scholars-btn,
-#add-relation-btn {
-  align-self: flex-start;
-  margin-top: 0.5rem;
-  background-color: var(--primary-color);
-  color: white;
-  padding: 0.8rem 1.5rem;
-}
-
-/* 修正关系管理面板布局 */
-.relationship-add {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 1rem;
-  margin-bottom: 1.5rem;
-  padding: 1.5rem;
-  background-color: var(--gray-light);
-  border-radius: var(--border-radius-md);
-}
-
-@media (min-width: 768px) {
-  .relationship-add {
-    grid-template-columns: 1fr 1fr 1fr; /* 在大屏幕上显示为3列 */
-  }
-
-  .relationship-add button {
-    grid-column: span 3; /* 按钮占据整行 */
-    justify-self: start;
-  }
-}
-
-/* 修复关系列表区域样式 */
-.relationship-list {
-  max-height: 300px;
-  overflow-y: auto !important;
-  border: 1px solid #ddd;
-  border-radius: var(--border-radius-sm);
-  margin-top: 0.5rem;
-}
-
-/* 状态消息样式优化 */
-#add-scholar-status {
-  min-height: 1.5rem;
-  padding: 0.5rem 0;
-}
-
-/* ===== AddPanel样式优化 ===== */
-/* 注意：这是addPanel组件的专用样式，添加在文件末尾以确保优先级 */
-
-/* 表单布局改进 */
-#add-scholar-modal .scholar-add {
-  display: flex;
-  flex-direction: column;
-  gap: 1.2rem;
-  margin-bottom: 2rem;
-}
-
-#add-scholar-modal .scholar-add > div {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 1rem;
-  width: 100%;
-}
-
-@media (min-width: 768px) {
-  #add-scholar-modal .scholar-add > div {
-    grid-template-columns: 1fr 1fr; /* 在大屏幕上并排显示输入框 */
-  }
-}
-
-/* 批量添加区域优化 */
-#add-scholar-modal .scholar-batch {
-  margin-top: 2rem;
-  border-top: 1px solid #eee;
-  padding-top: 1.5rem;
-}
-
-#add-scholar-modal .scholar-batch textarea {
-  min-height: 120px;
-  width: 100%;
-  margin-bottom: 1rem;
-}
-
-/* 按钮样式统一 */
-#add-scholar-modal #add-new-scholar-btn,
-#add-scholar-modal #add-batch-scholars-btn,
-#add-scholar-modal #add-relation-btn {
-  background-color: var(--primary-color);
-  color: white;
-  margin-top: 1rem;
-  align-self: flex-start;
-  padding: 0.8rem 1.5rem;
-  border-radius: var(--border-radius-sm);
-  border: none;
-  cursor: pointer;
-  font-size: 0.95rem;
-}
-
-#add-scholar-modal #add-new-scholar-btn:hover,
-#add-scholar-modal #add-batch-scholars-btn:hover,
-#add-scholar-modal #add-relation-btn:hover {
-  background-color: var(--primary-dark);
-}
-
-/* 关系管理面板优化 */
-#manage-relationships-tab .relationship-add {
-  padding: 1.5rem;
-  background-color: #f7f7f7;
-  border-radius: 8px;
-}
-
-/* 在大屏上优化布局 */
-@media (min-width: 768px) {
-  #manage-relationships-tab .relationship-add {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: flex-end;
-    gap: 1rem;
-  }
-
-  #manage-relationships-tab .relationship-add .form-group {
-    flex: 1;
-    min-width: 150px;
-    margin-bottom: 1rem;
-  }
-
-  #manage-relationships-tab .relationship-add button {
-    flex-basis: 100%;
-    margin-top: 1rem;
-  }
-}
-
-/* 表单元素统一样式 */
-#add-scholar-modal .form-group {
-  margin-bottom: 1.2rem;
-}
-
-#add-scholar-modal .form-group label {
-  display: block;
-  margin-bottom: 0.5rem;
-  font-weight: 500;
-}
-
-#add-scholar-modal .form-group input,
-#add-scholar-modal .form-group select {
-  width: 100%;
-  padding: 0.8rem;
-  border: 1px solid #ddd;
-  border-radius: var(--border-radius-sm);
-  font-size: 0.95rem;
-}
-
-/* 可搜索下拉框样式 */
-.searchable-select {
-  position: relative;
-  width: 100%;
-}
-
-.searchable-select input[type="text"] {
-  width: 100%;
-  padding: 0.8rem;
-  border: 1px solid #ddd;
-  border-radius: var(--border-radius-sm);
-  font-size: 0.95rem;
-}
-
-.searchable-select input[type="text"]:focus {
-  border-color: var(--primary-color);
-  outline: none;
-  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
-}
-
-/* 调整datalist样式（虽然浏览器原生样式可能无法完全自定义） */
-datalist {
-  max-height: 200px;
-  overflow-y: auto;
-}
-
-/* 增强关系添加区域的样式 */
-#manage-relationships-tab .relationship-add {
-  padding: 1.5rem;
-  background-color: #f7f7f7;
-  border-radius: 8px;
-}
-
-@media (min-width: 768px) {
-  #manage-relationships-tab .relationship-add {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 1.2rem;
-  }
-
-  #manage-relationships-tab .relationship-add .form-group:nth-child(3) {
-    grid-column: span 2;
-  }
-
-  #manage-relationships-tab .relationship-add button {
-    grid-column: span 2;
-    justify-self: flex-start;
-    margin-top: 1rem;
-  }
-}
-
-/* 更新论文列表样式，移除小圆点 */
-.publication-list {
-  margin: 0;
-  padding: 0;
-  list-style-type: none;
-}
-
-.publication-item {
-  margin-bottom: 12px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid #eee;
-}
-
-.pub-title {
-  font-weight: 500;
-  margin-bottom: 4px;
-}
-
-.pub-venue {
-  font-style: italic;
-  color: #666;
-  font-size: 0.9em;
-  margin-bottom: 2px;
-}
-
-.pub-citation {
-  font-size: 0.85em;
-  color: #777;
-}
-
-/* 更新相关学者列表样式，移除小圆点 */
-.related-scholars-list {
-  margin: 0;
-  padding: 0;
-  list-style-type: none;
-}
-
-.related-scholar-item {
-  margin-bottom: 8px;
-  padding-bottom: 6px;
-  border-bottom: 1px solid #eee;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-/* 标签管理对话框样式增强 */
+/* ===== 23. 标签管理对话框 ===== */
 .tag-dialog {
-  display: none;
   position: fixed;
+  z-index: 200;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 400px;
-  max-width: 90vw;
-  background-color: #fff;
-  border-radius: 6px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-  z-index: 1100;
+  background-color: white;
+  border-radius: var(--border-radius-md);
+  box-shadow: var(--shadow-lg);
+  width: 90%;
+  max-width: 500px;
+  max-height: 90vh;
+  overflow-y: auto;
+  display: none;
+}
+
+.tag-dialog.active {
+  display: block;
 }
 
 .tag-dialog-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 15px 20px;
-  border-bottom: 1px solid #eee;
+  padding: 1rem;
+  background-color: var(--primary-color);
+  color: white;
+  border-radius: var(--border-radius-md) var(--border-radius-md) 0 0;
 }
 
 .tag-dialog-title {
-  font-size: 1.2em;
-  font-weight: bold;
+  font-size: var(--font-size-md);
+  font-weight: 500;
 }
 
 .tag-dialog-close {
+  font-size: 1.5rem;
+  line-height: 1;
   cursor: pointer;
-  font-size: 22px;
-  font-weight: bold;
-  color: #777;
-}
-
-.tag-dialog-close:hover {
-  color: #000;
 }
 
 .tag-dialog-body {
-  padding: 15px 20px;
-  max-height: 60vh;
-  overflow-y: auto;
+  padding: 1rem;
 }
 
 .tag-dialog-footer {
-  padding: 10px 20px;
-  border-top: 1px solid #eee;
+  padding: 1rem;
+  background-color: var(--gray-light);
   display: flex;
   justify-content: flex-end;
-  gap: 10px;
+  gap: 0.5rem;
+  border-radius: 0 0 var(--border-radius-md) var(--border-radius-md);
 }
 
 .predefined-tags {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 15px;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  padding: 1rem;
+  background-color: var(--gray-light);
+  border-radius: var(--border-radius-sm);
 }
 
 .add-custom-tag {
   display: flex;
-  gap: 8px;
-  margin-bottom: 15px;
+  gap: 0.5rem;
+  margin-top: 1rem;
 }
 
-#custom-tag-input {
+.add-custom-tag input {
   flex: 1;
-  padding: 6px 10px;
+  padding: 0.5rem;
   border: 1px solid #ddd;
-  border-radius: 4px;
+  border-radius: var(--border-radius-sm);
+  font-size: 0.9rem;
 }
 
-.tag {
+.tag-add-btn {
   display: inline-flex;
   align-items: center;
-  background-color: #f1f8ff;
-  color: #0366d6;
-  border-radius: 3px;
-  padding: 3px 8px;
-  margin: 3px;
-  font-size: 0.9em;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background-color: var(--gray-light);
+  color: var(--gray-dark);
+  border: 1px solid var(--gray-color);
+  font-size: 0.7rem;
   cursor: pointer;
+  margin-left: 0.3rem;
 }
 
-.tag:hover {
-  background-color: #dbeeff;
+.tag-add-btn:hover {
+  background-color: var(--primary-color);
+  color: white;
+  border-color: var(--primary-color);
 }
 
-.tag-delete {
-  margin-left: 5px;
-  font-weight: bold;
-  opacity: 0.6;
+/* ===== 24. 管理面板 ===== */
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.2rem;
 }
 
-.tag-delete:hover {
-  opacity: 1;
+.section-header h3 {
+  font-size: var(--font-size-md);
+  color: var(--dark-color);
 }
 
-.tag-highlight {
-  animation: tagHighlight 1s;
+.last-update {
+  font-size: var(--font-size-xs);
+  color: var(--gray-dark);
+  background-color: var(--gray-light);
+  padding: 0.4rem 0.8rem;
+  border-radius: var(--border-radius-sm);
+}
+
+.scholar-add {
+  margin-bottom: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+
+.scholar-batch {
+  margin-bottom: 1.5rem;
+}
+
+.scholar-batch textarea {
+  width: 100%;
+  height: 100px;
+  padding: 0.8rem;
+  border: 1px solid #ddd;
+  border-radius: var(--border-radius-sm);
+  font-size: 0.95rem;
+  resize: vertical;
+  margin-bottom: 0.5rem;
+}
+
+.refresh-data {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  background-color: var(--gray-light);
+  border-radius: var(--border-radius-md);
+}
+
+.checkbox-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.scholar-list-section h4,
+.relationship-list-section h4 {
+  font-size: var(--font-size-base);
+  color: var(--dark-color);
+  margin-bottom: 0.8rem;
+}
+
+.search-list-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.search-list-container input {
+  padding: 0.8rem;
+  border: 1px solid #ddd;
+  border-radius: var(--border-radius-sm);
+  font-size: 0.95rem;
+}
+
+.scholar-list,
+.relationship-list {
+  max-height: 300px;
+  overflow-y: scroll !important;
+  border: 1px solid #ddd;
+  border-radius: var(--border-radius-sm);
+  background-color: white;
+}
+
+.scholar-item,
+.relationship-item {
+  padding: 0.8rem;
+  border-bottom: 1px solid #f0f0f0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.scholar-item:hover,
+.relationship-item:hover {
+  background-color: var(--gray-light);
+}
+
+.scholar-info {
+  flex: 1;
+}
+
+.scholar-name {
+  font-weight: 600;
+  color: var(--dark-color);
+}
+
+.scholar-detail {
+  font-size: var(--font-size-xs);
+  color: var(--gray-dark);
+  margin-top: 0.2rem;
+}
+
+.scholar-actions,
+.relationship-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.init-database,
+.migrate-data {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin: 1rem 0;
+  padding: 1rem;
+  background-color: #ffeeee;
+  border-radius: var(--border-radius-md);
+  border-left: 4px solid var(--warning-color);
+}
+
+.warning-text {
+  font-size: var(--font-size-xs);
+  color: var(--warning-color);
+  font-style: italic;
+}
+
+.empty-list {
+  padding: 1rem;
+  text-align: center;
+  color: var(--gray-dark);
+}
+
+/* ===== 25. 页脚 ===== */
+footer {
+  background-color: var(--dark-color);
+  color: var(--light-color);
+  text-align: center;
+  padding: 0.8rem;
+  font-size: var(--font-size-xs);
+}
+
+/* ===== 26. 共用工具类 ===== */
+.loading {
+  padding: 2rem;
+  text-align: center;
+  color: var(--gray-dark);
+}
+
+.tooltip {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  line-height: 16px;
+  text-align: center;
+  border-radius: 50%;
+  background-color: rgba(255, 255, 255, 0.3);
+  color: white;
+  font-size: 11px;
+  cursor: help;
+  margin-left: 4px;
+}
+
+.tooltip:hover::after {
+  content: attr(title);
+  position: absolute;
+  background: var(--dark-color);
+  color: white;
+  padding: 0.5rem 0.8rem;
+  border-radius: var(--border-radius-sm);
+  font-size: var(--font-size-xs);
+  max-width: 250px;
+  z-index: 10;
+  white-space: normal;
+  margin-left: 10px;
+  box-shadow: var(--shadow-md);
+}
+
+/* 全局：确保文本不被省略（除非特殊情况下需要省略） */
+.no-ellipsis,
+#scholar-name,
+#detail-panel .value,
+.publication-title,
+.publication-venue,
+.scholar-tag,
+.relation-name,
+.relation-type,
+.relation-type span,
+.relation-interests span,
+.relation-affiliation,
+.interest-tag,
+.interest-mini-tag,
+.custom-fields-content dt,
+.custom-fields-content dd {
+  white-space: normal !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+}
+
+/* ===== 27. 响应式设计 ===== */
+@media (max-width: 768px) {
+  header {
+    flex-direction: column;
+    padding: 1rem;
+  }
+
+  header h1 {
+    margin-bottom: 0.5rem;
+  }
+
+  .nav-actions {
+    width: 100%;
+  }
+
+  .main-container {
+    flex-direction: column;
+    height: auto;
+  }
+
+  .graph-container {
+    height: 60vh;
+    width: 100%;
+  }
+
+  .detail-panel {
+    width: 100%;
+    height: 40vh;
+    margin: 10px 0 0 0;
+  }
+
+  .graph-controls {
+    flex-direction: row;
+    padding: 0.5rem;
+  }
+
+  .modal-content {
+    width: 95%;
+    margin: 2% auto;
+  }
+
+  .relationship-add {
+    flex-direction: column;
+  }
+
+  .form-group {
+    width: 100%;
+  }
+
+  .filter-panel {
+    width: 95%;
+    max-height: 95vh;
+  }
+
+  .form-row {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .form-group-inline {
+    width: 100%;
+  }
 }
 
 @keyframes tagHighlight {
@@ -2829,4 +1727,18 @@ datalist {
   100% {
     background-color: #f1f8ff;
   }
+}
+
+/* 标签高亮动画 */
+.tag-highlight {
+  animation: tagHighlight 1s;
+}
+
+/* 空内容提示 */
+.empty-msg {
+  padding: 10px;
+  text-align: center;
+  color: var(--gray-dark);
+  font-style: italic;
+  font-size: var(--font-size-sm);
 }
