@@ -40,11 +40,10 @@
             <div id="cy"></div>
             <!-- 添加右上角控制按钮 -->
             <div class="graph-controls">
-             
               <button id="reset-view-btn" title="重置焦点">
                 <i class="fas fa-expand-arrows-alt"></i> 重置焦点
               </button>
-             
+
               <button id="reset-layout-btn" title="重新应用布局">
                 <i class="fas fa-sync-alt"></i> 重新布局
               </button>
@@ -54,13 +53,14 @@
               <button id="reload-data-btn" title="重置数据筛选">
                 <i class="fas fa-sync-alt"></i> 重置
               </button>
-              <div id="data-status" class="status-indicator">
-                正在加载数据...
-              </div>
             </div>
-            
+            <div id="data-status" class="status-indicator">正在加载数据...</div>
             <!-- 添加右下角悬浮按钮 -->
-            <button id="add-scholar-panel-btn" class="add-scholar-floating-btn" title="添加学者与管理关系">
+            <button
+              id="add-scholar-panel-btn"
+              class="add-scholar-floating-btn"
+              title="添加学者与管理关系"
+            >
               <i class="fas fa-plus"></i>
             </button>
           </div>
@@ -231,7 +231,7 @@
           <div id="custom-filters-container">
             <!-- 这里将动态添加筛选条件 -->
           </div>
-          
+
           <div class="add-filter-row">
             <button id="add-filter-btn" class="btn btn-sm">
               <i class="fas fa-plus"></i> 添加筛选条件
@@ -305,41 +305,6 @@
                 >上次更新: <span id="last-update-time">未知</span></span
               >
             </div>
-<!-- 
-            <div class="scholar-add">
-              <div>
-              <div class="form-group">
-                <label>学者名称:</label>
-                <input
-                  type="text"
-                  id="new-scholar-input"
-                  placeholder="输入学者名称..."
-                />
-              </div>
-              <div class="form-group">
-                <label>Scholar ID 或页面链接:</label>
-                <input
-                  type="text"
-                  id="new-scholar-id"
-                  placeholder="输入Google Scholar ID或完整页面链接..."
-                />
-                <div class="hint-text">
-                  可直接粘贴Scholar页面链接，系统会自动提取ID
-                </div>
-              </div></div>
-              <button id="add-scholar-btn" class="btn">爬取学者</button>
-            </div>
-
-            <div class="scholar-batch">
-              <textarea
-                id="batch-scholars"
-                placeholder="批量添加多位学者，每行一个 Google Scholar ID 或页面链接或学者名称..."
-              ></textarea>
-              <div class="hint-text">
-                推荐使用Scholar ID或页面链接，可避免重名问题。每行输入一个，系统会自动识别ID和名称
-              </div>
-              <button id="batch-add-btn" class="btn">批量爬取</button>
-            </div> -->
 
             <div class="refresh-data">
               <button id="refresh-all-btn" class="btn btn-warning">
@@ -372,7 +337,7 @@
                 警告：此操作将清空所有数据，无法恢复！
               </div>
             </div>
-            
+
             <div class="migrate-data">
               <button id="migrate-data-btn" class="btn btn-danger">
                 清空并重新导入数据
@@ -388,31 +353,11 @@
               <h3>关系管理</h3>
             </div>
 
-            <div class="relationship-add">
-              <div class="form-group">
-                <label>源学者:</label>
-                <select id="source-scholar"></select>
-              </div>
-              <div class="form-group">
-                <label>关系类型:</label>
-                <select id="relation-type">
-                  <option value="coauthor">合作者</option>
-                  <option value="advisor">导师</option>
-                  <option value="colleague">同事</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label>目标学者:</label>
-                <select id="target-scholar"></select>
-              </div>
-              <button id="add-relation-btn" class="btn">添加关系</button>
-            </div>
-
-            <div class="relationship-list-section">
-              <h4>自定义关系列表</h4>
-              <div class="relationship-list" id="relationship-list">
-                <div class="loading">加载中...</div>
-              </div>
+            <div class="relationship-management">
+              <!-- 移除重复的关系添加部分，保留在add-scholar-modal中 -->
+              <p class="hint-text" style="text-align: center; margin: 20px 0">
+                关系管理功能已移至添加面板，请使用页面右下角的 + 按钮进入
+              </p>
             </div>
           </div>
         </div>
@@ -436,10 +381,14 @@
         <div class="modal-body">
           <!-- 选项卡导航 -->
           <div class="add-manage-tabs">
-            <button class="tab-button active" data-tab="scholars">添加学者</button>
-            <button class="tab-button" data-tab="relationships">管理关系</button>
+            <button class="tab-button active" data-tab="scholars">
+              添加学者
+            </button>
+            <button class="tab-button" data-tab="relationships">
+              管理关系
+            </button>
           </div>
-          
+
           <!-- 添加学者选项卡 -->
           <div id="add-scholars-tab" class="tab-panel active">
             <div class="section-header">
@@ -478,12 +427,13 @@
                 placeholder="批量添加多位学者，每行一个 Google Scholar ID 或页面链接或学者名称..."
               ></textarea>
               <div class="hint-text">
-                推荐使用Scholar ID或页面链接，可避免重名问题。每行输入一个，系统会自动识别ID和名称
+                推荐使用Scholar
+                ID或页面链接，可避免重名问题。每行输入一个，系统会自动识别ID和名称
               </div>
               <button id="add-batch-scholars-btn" class="btn">批量爬取</button>
             </div>
           </div>
-          
+
           <!-- 管理关系选项卡 -->
           <div id="manage-relationships-tab" class="tab-panel">
             <div class="section-header">
@@ -493,7 +443,17 @@
             <div class="relationship-add">
               <div class="form-group">
                 <label>源学者:</label>
-                <select id="source-scholar"></select>
+                <div class="searchable-select">
+                  <input
+                    type="text"
+                    id="source-scholar-input"
+                    list="source-scholar-list"
+                    placeholder="输入学者名称..."
+                    autocomplete="off"
+                  />
+                  <datalist id="source-scholar-list"></datalist>
+                  <input type="hidden" id="source-scholar-value" />
+                </div>
               </div>
               <div class="form-group">
                 <label>关系类型:</label>
@@ -505,16 +465,24 @@
               </div>
               <div class="form-group">
                 <label>目标学者:</label>
-                <select id="target-scholar"></select>
+                <div class="searchable-select">
+                  <input
+                    type="text"
+                    id="target-scholar-input"
+                    list="target-scholar-list"
+                    placeholder="输入学者名称..."
+                    autocomplete="off"
+                  />
+                  <datalist id="target-scholar-list"></datalist>
+                  <input type="hidden" id="target-scholar-value" />
+                </div>
               </div>
               <button id="add-relation-btn" class="btn">添加关系</button>
             </div>
 
-            <div class="relationship-list-section">
-              <h4>自定义关系列表</h4>
-              <div class="relationship-list" id="relationship-list">
-                <div class="loading">加载中...</div>
-              </div>
+            <!-- 提示说明 -->
+            <div class="hint-text" style="margin-top: 20px; text-align: center">
+              添加后的关系会立即显示在图谱中
             </div>
           </div>
         </div>
@@ -528,13 +496,36 @@
     <!-- 引入JavaScript模块 -->
     <script type="module">
       import { init } from "./js/core.js";
+      import detailPanel from "./js/components/detailPanel.js";
+      import filterPanel from "./js/components/filterPanel.js";
+      import addPanel from "./js/components/addPanel.js";
+      import searchPanel from "./js/components/searchPanel.js";
+      import adminPanel from "./js/components/adminPanel.js";
+      import graphPanel from "./js/components/graphPanel.js";
+      import * as dataManager from "./js/dataManager.js";
 
       // 等待DOM加载完成后初始化
       document.addEventListener("DOMContentLoaded", () => {
-        init().catch((error) => {
-          console.error("初始化失败:", error);
-          alert("系统初始化失败，请刷新页面重试。");
-        });
+        // 初始化应用核心
+        init()
+          .then(() => {
+            // 初始化组件
+            detailPanel.init();
+            filterPanel.init();
+            graphPanel.init();
+            addPanel.init();
+            searchPanel.init();
+            adminPanel.init();
+
+            // 初始化数据管理器
+            dataManager.init({
+              scholars: window.scholars || {},
+            });
+          })
+          .catch((error) => {
+            console.error("初始化失败:", error);
+            alert("系统初始化失败，请刷新页面重试。");
+          });
       });
     </script>
   </body>

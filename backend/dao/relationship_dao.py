@@ -9,24 +9,32 @@ from datetime import datetime
 from db.db_manager import DBManager
 import logging
 
+
 class RelationshipDao:
     """关系数据访问对象"""
-    
+
     def __init__(self):
         """初始化DAO，获取数据库连接"""
         self.db_manager = DBManager()
         self.logger = logging.getLogger(__name__)
-    
-    def relationship_exists(self, source_id, target_id, relation_type=None, source_type='scholar', target_type='scholar'):
+
+    def relationship_exists(
+        self,
+        source_id,
+        target_id,
+        relation_type=None,
+        source_type="scholar",
+        target_type="scholar",
+    ):
         """检查关系是否存在
-        
+
         Args:
             source_id: 源实体ID
             target_id: 目标实体ID
             relation_type: 关系类型(可选)
             source_type: 源实体类型，默认为scholar
             target_type: 目标实体类型，默认为scholar
-            
+
         Returns:
             bool: 关系是否存在
         """
@@ -37,21 +45,35 @@ class RelationshipDao:
             AND source_type = ? AND target_type = ?
             AND relation_type = ?
             """
-            cursor = self.db_manager.execute(query, (source_id, target_id, source_type, target_type, relation_type))
+            cursor = self.db_manager.execute(
+                query, (source_id, target_id, source_type, target_type, relation_type)
+            )
         else:
             query = """
             SELECT 1 FROM relationships 
             WHERE source_id = ? AND target_id = ?
             AND source_type = ? AND target_type = ?
             """
-            cursor = self.db_manager.execute(query, (source_id, target_id, source_type, target_type))
-            
+            cursor = self.db_manager.execute(
+                query, (source_id, target_id, source_type, target_type)
+            )
+
         result = cursor.fetchone()
         return result is not None
-    
-    def create_relationship(self, source_id, target_id, relation_type, weight=1, data=None, source_type='scholar', target_type='scholar', is_custom=False):
+
+    def create_relationship(
+        self,
+        source_id,
+        target_id,
+        relation_type,
+        weight=1,
+        data=None,
+        source_type="scholar",
+        target_type="scholar",
+        is_custom=False,
+    ):
         """创建实体关系
-        
+
         Args:
             source_id: 源实体ID
             target_id: 目标实体ID
@@ -61,38 +83,70 @@ class RelationshipDao:
             source_type: 源实体类型，默认为scholar
             target_type: 目标实体类型，默认为scholar
             is_custom: 是否自定义关系，默认为False
-            
+
         Returns:
             bool: 是否成功创建
         """
         try:
             # 检查关系是否已存在
-            if self.relationship_exists(source_id, target_id, relation_type, source_type, target_type):
+            if self.relationship_exists(
+                source_id, target_id, relation_type, source_type, target_type
+            ):
                 # 已存在，更新权重
-                return self.update_relationship_weight(source_id, target_id, relation_type, weight, source_type, target_type)
-            
+                return self.update_relationship_weight(
+                    source_id,
+                    target_id,
+                    relation_type,
+                    weight,
+                    source_type,
+                    target_type,
+                )
+
             # 转换data为JSON字符串
             data_json = json.dumps(data) if data else None
-            
+
             # 插入关系
             query = """
             INSERT INTO relationships (source_id, source_type, target_id, target_type, relation_type, weight, is_custom, data)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """
-            
-            self.db_manager.execute(query, (
-                source_id, source_type, target_id, target_type, relation_type, weight, 1 if is_custom else 0, data_json
-            ))
-            
+
+            self.db_manager.execute(
+                query,
+                (
+                    source_id,
+                    source_type,
+                    target_id,
+                    target_type,
+                    relation_type,
+                    weight,
+                    1 if is_custom else 0,
+                    data_json,
+                ),
+            )
+
+            # 提交事务以确保数据被保存到数据库
+            self.db_manager.commit()
+
             return True
-            
+
         except Exception as e:
             self.logger.error(f"创建关系记录时出错: {str(e)}")
+            # 发生错误时回滚事务
+            self.db_manager.rollback()
             return False
-    
-    def update_relationship_weight(self, source_id, target_id, relation_type, weight_delta=1, source_type='scholar', target_type='scholar'):
+
+    def update_relationship_weight(
+        self,
+        source_id,
+        target_id,
+        relation_type,
+        weight_delta=1,
+        source_type="scholar",
+        target_type="scholar",
+    ):
         """更新关系权重
-        
+
         Args:
             source_id: 源实体ID
             target_id: 目标实体ID
@@ -100,7 +154,7 @@ class RelationshipDao:
             weight_delta: 权重增量
             source_type: 源实体类型，默认为scholar
             target_type: 目标实体类型，默认为scholar
-            
+
         Returns:
             bool: 是否成功更新
         """
@@ -112,195 +166,219 @@ class RelationshipDao:
             AND source_type = ? AND target_type = ?
             AND relation_type = ?
             """
-            
-            self.db_manager.execute(query, (
-                weight_delta, source_id, target_id, source_type, target_type, relation_type
-            ))
-            
+
+            self.db_manager.execute(
+                query,
+                (
+                    weight_delta,
+                    source_id,
+                    target_id,
+                    source_type,
+                    target_type,
+                    relation_type,
+                ),
+            )
+
+            # 提交事务
+            self.db_manager.commit()
+
             return True
-            
+
         except Exception as e:
             self.logger.error(f"更新关系权重时出错: {str(e)}")
+            # 回滚事务
+            self.db_manager.rollback()
             return False
-    
-    def scholar_institution_exists(self, scholar_id, inst_id):
-        """检查学者-机构关系是否存在
-        
+
+    def delete_relationship(
+        self,
+        source_id,
+        target_id,
+        relation_type,
+        source_type="scholar",
+        target_type="scholar",
+    ):
+        """删除实体关系
+
         Args:
-            scholar_id: 学者ID
-            inst_id: 机构ID
-            
+            source_id: 源实体ID
+            target_id: 目标实体ID
+            relation_type: 关系类型
+            source_type: 源实体类型，默认为scholar
+            target_type: 目标实体类型，默认为scholar
+
         Returns:
-            bool: 关系是否存在
+            bool: 是否成功删除
         """
-        query = """
-        SELECT 1 FROM scholar_institutions 
-        WHERE scholar_id = ? AND inst_id = ?
-        """
-        cursor = self.db_manager.execute(query, (scholar_id, inst_id))
-        result = cursor.fetchone()
-        return result is not None
-    
-    def create_scholar_institution(self, scholar_id, inst_id, start_year=None, end_year=None, is_current=True):
-        """创建学者-机构关系
-        
+        try:
+            query = """
+            DELETE FROM relationships 
+            WHERE source_id = ? AND target_id = ? 
+            AND source_type = ? AND target_type = ?
+            AND relation_type = ?
+            """
+
+            self.db_manager.execute(
+                query, (source_id, target_id, source_type, target_type, relation_type)
+            )
+
+            # 提交事务
+            self.db_manager.commit()
+
+            return True
+
+        except Exception as e:
+            self.logger.error(f"删除关系记录时出错: {str(e)}")
+            # 回滚事务
+            self.db_manager.rollback()
+            return False
+
+    def get_scholar_relationsips(self, scholar_id, limit=100, offset=0):
+        """获取学者的合作者
+
         Args:
             scholar_id: 学者ID
-            inst_id: 机构ID
-            start_year: 开始年份
-            end_year: 结束年份
-            is_current: 是否当前机构
-            
+            limit: 返回数量限制
+            offset: 偏移量
+
+        Returns:
+            list: 合作者列表，包含合作次数和学者ID
+        """
+        try:
+            self.logger.info(f"获取学者 {scholar_id} 的合作者，限制: {limit}")
+
+            # 获取所有与该学者关联的学者（全部边）
+            query = """
+            SELECT r.target_id as scholar_id, r.weight as collaboration_count, r.relation_type
+            FROM relationships r
+            WHERE r.source_id = ? 
+            AND r.source_type = 'scholar'
+            AND r.target_type = 'scholar'
+            ORDER BY r.weight DESC
+            """
+            cursor = self.db_manager.execute(query, (scholar_id,))
+            all_relations = cursor.fetchall()
+
+            # 分组处理每个相关学者的所有关系类型
+            target_relationships = {}
+            for rel in all_relations:
+                target_id = rel.get("scholar_id")
+                if not target_id:
+                    continue
+
+                relation_type = rel.get("relation_type", "coauthor")
+                weight = rel.get("collaboration_count", 1)
+
+                if target_id not in target_relationships:
+                    target_relationships[target_id] = {
+                        "scholar_id": target_id,
+                        "collaboration_count": weight,
+                        "relation_type": relation_type,
+                        "all_relation_types": [relation_type],
+                    }
+                else:
+                    # 已存在这个学者，添加新的关系类型
+                    target_relationships[target_id]["all_relation_types"].append(
+                        relation_type
+                    )
+
+                    # 如果新的关系类型优先级更高，则更新主要关系类型
+                    current_type = target_relationships[target_id]["relation_type"]
+                    if self._get_relation_priority(
+                        relation_type
+                    ) < self._get_relation_priority(current_type):
+                        target_relationships[target_id]["relation_type"] = relation_type
+
+                    # 更新权重（取最大值）
+                    if weight > target_relationships[target_id]["collaboration_count"]:
+                        target_relationships[target_id]["collaboration_count"] = weight
+
+            # 转换为列表，并按权重排序
+            collaborators = list(target_relationships.values())
+            collaborators.sort(key=lambda x: x["collaboration_count"], reverse=True)
+
+            # 应用limit和offset
+            collaborators = collaborators[offset : offset + limit]
+
+            self.logger.info(
+                f"找到 {len(collaborators)} 位与学者 {scholar_id} 相关的合作者"
+            )
+
+            # 检查结果
+            if not collaborators:
+                self.logger.warning(f"学者 {scholar_id} 没有关联的合作者")
+
+            return collaborators
+
+        except Exception as e:
+            self.logger.error(f"获取学者合作者列表时出错: {e}")
+            import traceback
+
+            self.logger.error(traceback.format_exc())
+            return []
+
+    def _get_relation_priority(self, relation_type):
+        """获取关系类型的优先级（数字越小优先级越高）
+
+        Args:
+            relation_type: 关系类型
+
+        Returns:
+            int: 优先级值
+        """
+        priorities = {"advisor": 1, "colleague": 2, "coauthor": 3}
+        return priorities.get(relation_type, 999)  # 未知类型优先级最低
+
+    def create_relationships_batch(self, relationship_data):
+        """批量创建实体关系
+
+        Args:
+            relationship_data: 关系数据列表，每项为 (source_id, target_id, relation_type, weight) 元组
+
         Returns:
             bool: 是否成功创建
         """
-        try:
-            # 检查关系是否已存在
-            if self.scholar_institution_exists(scholar_id, inst_id):
-                return True  # 已存在，无需创建
-            
-            # 插入关系
-            query = """
-            INSERT INTO scholar_institutions (scholar_id, inst_id, start_year, end_year, is_current)
-            VALUES (?, ?, ?, ?, ?)
-            """
-            
-            self.db_manager.execute(query, (
-                scholar_id, inst_id, start_year, end_year, 1 if is_current else 0
-            ))
-            
-            # 同时在relationships表中创建关系记录
-            self.create_relationship(
-                scholar_id, 
-                inst_id, 
-                "affiliated_with", 
-                1, 
-                None, 
-                'scholar', 
-                'institution'
-            )
-            
+        if not relationship_data:
             return True
-            
-        except Exception as e:
-            self.logger.error(f"创建学者-机构关系时出错: {str(e)}")
-            return False
-    
-    def create_scholar_institutions_from_scholars(self):
-        """从学者表中提取机构关系，保存到scholar_institutions表中
-        
-        Returns:
-            int: 添加的关系数量
-        """
+
         try:
-            # 获取所有学者和机构信息
+            # 准备批量插入的数据
+            values = []
+            for source_id, target_id, relation_type, weight in relationship_data:
+                # 源和目标类型默认为scholar
+                source_type = "scholar"
+                target_type = "scholar"
+                is_custom = 0  # 默认为非自定义
+                data_json = None
+
+                # 如果关系已存在，我们会依赖于INSERT OR IGNORE或UPSERT特性
+                values.append(
+                    (
+                        source_id,
+                        source_type,
+                        target_id,
+                        target_type,
+                        relation_type,
+                        weight,
+                        is_custom,
+                        data_json,
+                    )
+                )
+
+            # 执行批量插入
             query = """
-            SELECT s.scholar_id, s.affiliation
-            FROM scholars s
-            WHERE s.affiliation IS NOT NULL AND s.affiliation != ''
+            INSERT OR REPLACE INTO relationships 
+            (source_id, source_type, target_id, target_type, relation_type, weight, is_custom, data)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """
-            cursor = self.db_manager.execute(query)
-            scholar_affiliations = cursor.fetchall()
-            
-            # 获取所有机构
-            inst_query = "SELECT inst_id, name FROM institutions"
-            cursor = self.db_manager.execute(inst_query)
-            institutions = {row['name']: row['inst_id'] for row in cursor.fetchall()}
-            
-            # 关联学者和机构
-            count = 0
-            for row in scholar_affiliations:
-                scholar_id = row['scholar_id']
-                affiliation = row['affiliation']
-                
-                # 查找匹配的机构ID
-                inst_id = institutions.get(affiliation)
-                if inst_id:
-                    # 创建关系
-                    success = self.create_scholar_institution(scholar_id, inst_id)
-                    if success:
-                        count += 1
-            
-            return count
-            
+
+            with self.db_manager.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.executemany(query, values)
+                conn.commit()
+
+            return True
+
         except Exception as e:
-            self.logger.error(f"从学者表提取机构关系时出错: {str(e)}")
-            return 0
-    
-    def get_scholar_institutions(self, scholar_id):
-        """获取学者的所有机构关系
-        
-        Args:
-            scholar_id: 学者ID
-            
-        Returns:
-            list: 机构关系列表
-        """
-        query = """
-        SELECT si.*, i.name as institution_name
-        FROM scholar_institutions si
-        JOIN institutions i ON si.inst_id = i.inst_id
-        WHERE si.scholar_id = ?
-        ORDER BY si.is_current DESC, si.end_year DESC, si.start_year DESC
-        """
-        cursor = self.db_manager.execute(query, (scholar_id,))
-        institutions = cursor.fetchall()
-        return institutions
-    
-    def get_institution_scholars(self, inst_id, limit=100, offset=0):
-        """获取机构的所有学者
-        
-        Args:
-            inst_id: 机构ID
-            limit: 返回数量限制
-            offset: 偏移量
-            
-        Returns:
-            list: 学者列表
-        """
-        query = """
-        SELECT s.*, e.name
-        FROM scholars s
-        JOIN entities e ON s.scholar_id = e.id
-        JOIN scholar_institutions si ON s.scholar_id = si.scholar_id
-        WHERE si.inst_id = ?
-        ORDER BY s.is_main_scholar DESC, s.citedby DESC
-        LIMIT ? OFFSET ?
-        """
-        cursor = self.db_manager.execute(query, (inst_id, limit, offset))
-        scholars = cursor.fetchall()
-        
-        # 解析JSON数据
-        for scholar in scholars:
-            if scholar.get('cites_per_year'):
-                try:
-                    scholar['cites_per_year'] = json.loads(scholar['cites_per_year'])
-                except:
-                    scholar['cites_per_year'] = {}
-                    
-        return scholars
-    
-    def get_collaborators(self, scholar_id, limit=100, offset=0):
-        """获取学者的合作者
-        
-        Args:
-            scholar_id: 学者ID
-            limit: 返回数量限制
-            offset: 偏移量
-            
-        Returns:
-            list: 合作者列表，包含合作次数
-        """
-        query = """
-        SELECT r.target_id as scholar_id, r.weight as collaboration_count
-        FROM relationships r
-        WHERE r.source_id = ? 
-        AND r.source_type = 'scholar'
-        AND r.target_type = 'scholar'
-        AND r.relation_type = 'coauthor'
-        ORDER BY r.weight DESC
-        LIMIT ? OFFSET ?
-        """
-        cursor = self.db_manager.execute(query, (scholar_id, limit, offset))
-        collaborators = cursor.fetchall()
-        return collaborators 
+            self.logger.error(f"批量创建关系记录时出错: {str(e)}")
+            return False

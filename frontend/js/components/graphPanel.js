@@ -1,18 +1,70 @@
 /**
- * ScholarTailor - 图谱模块
- * 处理图谱相关的功能，包括初始化、事件监听和布局控制
+ * ScholarTailor - 图谱面板组件
+ * 处理图谱相关功能，包括初始化、布局和事件监听
  */
 
-import { getGraphElements } from "./data.js";
-import { updateDetailPanel, clearDetailPanel } from "./ui.js";
+import { getGraphElements } from "../dataManager.js";
+import detailPanel from "./detailPanel.js";
+import eventBus from "../eventBus.js";
+import { showStatusMessage } from "../utils.js";
 
-// 初始化图谱相关的变量
+// 组件私有状态
+const state = {
+  cyInstance: null,
+  activeNodeId: null,
+  isVisible: true,
+};
+
+// 节点大小配置
 const NODE_SIZE = {
   MIN: 15,
   MAX: 35,
   PRIMARY_FACTOR: 1.3,
   SECONDARY_FACTOR: 0.8,
 };
+
+// DOM元素引用
+const elements = {
+  // 集中管理DOM选择器
+  container: () => document.getElementById("cy"),
+  resetViewBtn: () => document.getElementById("reset-view-btn"),
+  resetLayoutBtn: () => document.getElementById("reset-layout-btn"),
+  graphViewBtn: () => document.getElementById("graph-view-btn"),
+};
+
+/**
+ * 获取FCose布局参数
+ * @returns {Object} - 布局参数配置
+ */
+function getFCoseLayoutOptions() {
+  return {
+    name: "fcose", // 名称
+    quality: "default", // 质量 - 'draft', 'default', 'proof'
+    randomize: true, // 是否使用随机初始布局
+    animate: true, // 是否使用动画
+    animationDuration: 2000, // 动画持续时间
+    animationEasing: "ease-in-out", // 动画缓动函数
+    fit: true, // 适应视图
+    padding: 80, // 填充
+    nodeRepulsion: 12000, // 节点间斥力
+    idealEdgeLength: 300, // 理想边长
+    nestingFactor: 0.1, // 嵌套因子
+    gravity: 0.5, // 重力
+    gravityRange: 4, // 重力范围
+    numIter: 5000, // 迭代次数
+    initialTemp: 100, // 初始温度
+    coolingFactor: 0.99, // 冷却因子
+    minTemp: 1.0, // 最小温度
+    nodeDimensionsIncludeLabels: true, // 节点尺寸包含标签
+    uniformNodeDimensions: false, // 统一节点尺寸
+    packComponents: true, // 打包组件
+    samplingType: true, // 采样类型
+    sampleSize: 100, // 样本大小
+    avoidOverlap: true, // 避免重叠
+    avoidOverlapPadding: 50, // 避免重叠填充
+    nodeEdgeWeightInfluence: 0.5, // 节点边权重影响
+  };
+}
 
 /**
  * 初始化图谱
@@ -21,7 +73,7 @@ const NODE_SIZE = {
  * @param {Object} perfOptions - 性能选项
  * @returns {Object} - cytoscape实例
  */
-export function initGraph(containerId, data, perfOptions = {}) {
+function initGraph(containerId, data, perfOptions = {}) {
   // 检查容器元素是否存在
   const container = document.getElementById(containerId);
   if (!container) {
@@ -252,11 +304,33 @@ export function initGraph(containerId, data, perfOptions = {}) {
           selector: "edge.highlighted-neighbor",
           style: {
             width: 2,
-            "line-color": "rgb(94, 146, 188)", // 协调的蓝色，不太饱和
             "line-opacity": 0.85, // 稍微透明
-            "target-arrow-color": "rgb(94, 146, 188)",
             "target-arrow-opacity": 0.85,
             "z-index": 899,
+          },
+        },
+        // 根据关系类型设置不同的高亮边样式 - coauthor
+        {
+          selector: 'edge[relationType="coauthor"].highlighted-neighbor',
+          style: {
+            "line-color": "rgb(120, 160, 210)", // 保持与原始颜色一致
+            "target-arrow-color": "rgb(120, 160, 210)",
+          },
+        },
+        // 根据关系类型设置不同的高亮边样式 - advisor
+        {
+          selector: 'edge[relationType="advisor"].highlighted-neighbor',
+          style: {
+            "line-color": "rgb(210, 140, 90)", // 保持与原始颜色一致
+            "target-arrow-color": "rgb(210, 140, 90)",
+          },
+        },
+        // 根据关系类型设置不同的高亮边样式 - colleague
+        {
+          selector: 'edge[relationType="colleague"].highlighted-neighbor',
+          style: {
+            "line-color": "rgb(120, 180, 140)", // 保持与原始颜色一致
+            "target-arrow-color": "rgb(120, 180, 140)",
           },
         },
       ],
@@ -265,7 +339,8 @@ export function initGraph(containerId, data, perfOptions = {}) {
       ...cyPerfOptions,
     });
 
-    // 保存实例到全局变量
+    // 保存实例到状态和全局变量
+    state.cyInstance = cyInstance;
     window.cy = cyInstance;
 
     // 设置事件监听
@@ -285,47 +360,6 @@ export function initGraph(containerId, data, perfOptions = {}) {
     console.error("初始化图谱失败:", error);
     return null;
   }
-}
-
-/**
- * 获取FCose布局参数，优化防止节点遮挡
- */
-export function getFCoseLayoutOptions() {
-  return {
-    // 添加fcose布局（更优化的力导向布局）
-    name: "fcose", // 名称
-    quality: "default", // 质量 - 'draft', 'default', 'proof'
-    randomize: false, // 是否使用随机初始布局
-    animate: true, // 是否使用动画
-    animationDuration: 2000, // 动画持续时间
-    animationEasing: "ease-in-out", // 动画缓动函数
-    fit: true, // 适应视图
-    padding: 80, // 填充
-    nodeRepulsion: 20000, // 节点间斥力
-    idealEdgeLength: 400, // 理想边长
-    edgeElasticity: 0.45, // 边的弹性
-    nestingFactor: 0.1, // 嵌套因子
-    gravity: 0.25, // 重力
-    gravityRange: 3.8, // 重力范围
-    gravityCompound: 1.0, // 复合重力
-    numIter: 5000, // 迭代次数
-    initialTemp: 200, // 初始温度
-    coolingFactor: 0.95, // 冷却因子
-    minTemp: 1.0, // 最小温度
-    nodeDimensionsIncludeLabels: true, // 节点尺寸包含标签
-    uniformNodeDimensions: false, // 统一节点尺寸
-    packComponents: true, // 打包组件
-    samplingType: true, // 采样类型
-    sampleSize: 100, // 样本大小
-    avoidOverlap: true, // 避免重叠
-    avoidOverlapPadding: 50, // 避免重叠填充
-    // 质量调整
-    qualityFactor: 0.9, // 质量因子
-    // 组件处理
-    componentSpacing: 120, // 组件间距
-    // 边长
-    nodeEdgeWeightInfluence: 0.5, // 节点边权重影响
-  };
 }
 
 /**
@@ -352,8 +386,9 @@ function setupEventListeners(cyInstance) {
       cyInstance.elements().removeClass("highlighted-neighbor");
       cyInstance.elements().removeClass("faded");
       // 清除详情面板
-      clearDetailPanel();
+      detailPanel.clear();
       // 重置活跃节点
+      state.activeNodeId = null;
       window.activeNodeId = null;
       // 重置缩放
       resetZoom();
@@ -370,29 +405,84 @@ function setupEventListeners(cyInstance) {
     const node = evt.target;
     node.removeClass("hover");
   });
+
+  // 设置布局控制按钮
+  const resetLayoutBtn = elements.resetLayoutBtn();
+  if (resetLayoutBtn) {
+    resetLayoutBtn.addEventListener("click", function () {
+      resetLayoutBtn.innerHTML =
+        '<i class="fas fa-spinner fa-spin"></i> 应用中...';
+      resetLayoutBtn.disabled = true;
+
+      // 应用fcose布局
+      const layout = applyLayout("fcose");
+
+      // 等待布局完成后恢复按钮状态
+      if (layout && layout.on) {
+        layout.on("layoutstop", function () {
+          // 布局完成后调整节点大小
+          adjustNodeSizeByConnections();
+
+          resetLayoutBtn.innerHTML = '<i class="fas fa-sync-alt"></i> 重新布局';
+          resetLayoutBtn.disabled = false;
+
+          // 显示成功消息
+          showStatusMessage("布局已重新应用", "success");
+        });
+      } else {
+        // 如果layout对象未正确返回，3秒后恢复按钮状态
+        setTimeout(function () {
+          // 尝试调整节点大小
+          adjustNodeSizeByConnections();
+
+          resetLayoutBtn.innerHTML = '<i class="fas fa-sync-alt"></i> 重新布局';
+          resetLayoutBtn.disabled = false;
+        }, 3000);
+      }
+    });
+  }
+
+  // 重置视图按钮
+  const resetViewBtn = elements.resetViewBtn();
+  if (resetViewBtn) {
+    resetViewBtn.addEventListener("click", function () {
+      resetGraphViewport();
+    });
+  }
+
+  // 返回全局视图按钮
+  const graphViewBtn = elements.graphViewBtn();
+  if (graphViewBtn) {
+    graphViewBtn.addEventListener("click", function () {
+      state.cyInstance.nodes().removeClass("highlighted faded");
+      resetZoom();
+      graphViewBtn.classList.add("hidden");
+    });
+  }
 }
 
 /**
  * 选择节点
  * @param {Object} node - Cytoscape节点对象
  */
-export function selectNode(node) {
+function selectNode(node) {
   if (!node) return;
 
   // 如果点击的是当前选中的节点，则取消选择
-  if (window.activeNodeId === node.id()) {
+  if (state.activeNodeId === node.id()) {
     clearNodeSelection();
     resetZoom();
     return;
   }
 
   // 更新活跃节点ID
+  state.activeNodeId = node.id();
   window.activeNodeId = node.id();
 
   // 高亮选中节点
-  window.cy.elements().removeClass("selected");
-  window.cy.elements().removeClass("highlighted-neighbor");
-  window.cy.elements().addClass("faded");
+  state.cyInstance.elements().removeClass("selected");
+  state.cyInstance.elements().removeClass("highlighted-neighbor");
+  state.cyInstance.elements().addClass("faded");
 
   // 获取相关节点和连接边
   const connectedEdges = node.connectedEdges();
@@ -414,11 +504,13 @@ export function selectNode(node) {
   // 放大到相关区域
   zoomToElements(relatedElements);
 
-  // 构建节点数据，添加相关学者信息
+  // 获取节点基本数据
   const nodeData = { ...node.data() };
 
-  // 构建相关学者列表
-  if (!nodeData.related_scholars) {
+  // 只有在nodeData中没有related_scholars字段时才构建相关学者数据
+  if (!nodeData.related_scholars || nodeData.related_scholars.length === 0) {
+    console.log("构建节点的相关学者数据");
+
     nodeData.related_scholars = [];
 
     // 将相邻节点添加到相关学者列表
@@ -431,26 +523,72 @@ export function selectNode(node) {
 
       // 如果找到边，获取关系类型
       if (connectingEdge.length > 0) {
+        // 获取主要关系类型
         const relationType = connectingEdge[0].data("relationType");
-        if (relationType === "coauthor") {
-          relationship = "合作者";
-        } else if (relationType === "advisor") {
+
+        // 检查是否存在多种关系类型
+        const allRelations = connectingEdge[0].data("allRelations") || [];
+        console.log("节点关系:", {
+          source: node.id(),
+          target: neighborNode.id(),
+          主要类型: relationType,
+          所有类型: allRelations,
+        });
+
+        // 根据关系类型设置显示文本
+        if (relationType === "advisor") {
           relationship = "导师";
         } else if (relationType === "colleague") {
           relationship = "同事";
+        } else if (relationType === "coauthor") {
+          relationship = "合作者";
+        }
+
+        // 如果有多种关系，在关系文本中标注
+        if (allRelations && allRelations.length > 1) {
+          const relationTypes = [];
+
+          // 按照优先级顺序添加关系类型
+          if (allRelations.includes("advisor")) {
+            relationTypes.push("导师");
+          }
+          if (allRelations.includes("colleague")) {
+            relationTypes.push("同事");
+          }
+          if (allRelations.includes("coauthor")) {
+            relationTypes.push("合作者");
+          }
+
+          // 如果确实找到了多种关系，则显示多重关系文本
+          if (relationTypes.length > 1) {
+            relationship = relationTypes.join("、");
+          }
         }
       }
 
-      nodeData.related_scholars.push({
-        id: neighborData.id,
-        name: neighborData.label || neighborData.name || neighborData.id,
-        relationship: relationship,
-      });
+      // 确保关联学者必要字段存在
+      if (neighborData.id) {
+        nodeData.related_scholars.push({
+          id: neighborData.id,
+          name: neighborData.label || neighborData.name || neighborData.id,
+          relationship: relationship,
+        });
+      }
     });
   }
 
-  // 更新详情面板
-  updateDetailPanel(nodeData);
+  console.log(
+    "从图显示学者详情:",
+    nodeData.id,
+    "相关学者:",
+    nodeData.related_scholars?.length || 0
+  );
+
+  // 更新详情面板 - 这会内部触发API调用获取更详细的数据
+  detailPanel.update(nodeData);
+
+  // 不再额外触发scholar:select事件，因为detailPanel.update会处理
+  // eventBus.emit("scholar:select", nodeData);
 }
 
 /**
@@ -461,7 +599,7 @@ function zoomToElements(elements) {
   if (!elements || elements.length === 0) return;
 
   // 添加动画过渡
-  window.cy.animate({
+  state.cyInstance.animate({
     fit: {
       eles: elements,
       padding: 50,
@@ -475,7 +613,7 @@ function zoomToElements(elements) {
  * 重置缩放级别，显示整个图
  */
 function resetZoom() {
-  window.cy.animate({
+  state.cyInstance.animate({
     fit: {
       padding: 70,
     },
@@ -484,34 +622,38 @@ function resetZoom() {
   });
 
   // 移除所有元素的淡化和高亮效果
-  window.cy.elements().removeClass("faded");
-  window.cy.elements().removeClass("highlighted-neighbor");
+  state.cyInstance.elements().removeClass("faded");
+  state.cyInstance.elements().removeClass("highlighted-neighbor");
 }
 
 /**
  * 清除节点选择
  */
 function clearNodeSelection() {
-  if (!window.activeNodeId) return;
+  if (!state.activeNodeId) return;
 
   // 清除活跃节点ID
+  state.activeNodeId = null;
   window.activeNodeId = null;
 
   // 清除高亮和淡化
-  window.cy.elements().removeClass("selected");
-  window.cy.elements().removeClass("highlighted-neighbor");
-  window.cy.elements().removeClass("faded");
+  state.cyInstance.elements().removeClass("selected");
+  state.cyInstance.elements().removeClass("highlighted-neighbor");
+  state.cyInstance.elements().removeClass("faded");
 
   // 清除详情面板
-  clearDetailPanel();
+  detailPanel.clear();
+
+  // 发布学者取消选择事件
+  eventBus.emit("scholar:deselect");
 }
 
 /**
  * 调整节点大小
  * @param {Object} cy - Cytoscape实例
  */
-export function adjustNodeSizeByConnections(cy) {
-  const cyToUse = cy || window.cy;
+function adjustNodeSizeByConnections(cy) {
+  const cyToUse = cy || state.cyInstance;
   if (!cyToUse) return;
 
   // 先计算连接数范围
@@ -552,8 +694,9 @@ export function adjustNodeSizeByConnections(cy) {
  * 布局后优化节点位置
  * @param {Object} cy - Cytoscape实例
  */
-export function optimizeNodePositions(cy) {
-  if (!cy || cy.nodes().length === 0) {
+function optimizeNodePositions(cy) {
+  const cyToUse = cy || state.cyInstance;
+  if (!cyToUse || cyToUse.nodes().length === 0) {
     console.log("无法优化节点位置：图谱为空");
     return;
   }
@@ -564,12 +707,12 @@ export function optimizeNodePositions(cy) {
 
     try {
       // 调整节点大小，根据连接数动态调整
-      adjustNodeSizeByConnections(cy);
+      adjustNodeSizeByConnections(cyToUse);
 
       // 为了确保设置生效，触发一次重新渲染
-      cy.elements().lock(); // 锁定所有元素位置
+      cyToUse.elements().lock(); // 锁定所有元素位置
       setTimeout(() => {
-        cy.elements().unlock(); // 解锁所有元素位置
+        cyToUse.elements().unlock(); // 解锁所有元素位置
       }, 100);
 
       console.log("节点显示优化完成");
@@ -582,26 +725,145 @@ export function optimizeNodePositions(cy) {
 /**
  * 重置图谱视图
  */
-export function resetGraphViewport() {
-  if (!window.cy) return;
+function resetGraphViewport() {
+  if (!state.cyInstance) return;
 
   // 清除选中状态
-  window.cy.elements().removeClass("selected");
-  window.cy.elements().removeClass("highlighted-neighbor");
-  window.cy.elements().removeClass("faded");
+  state.cyInstance.elements().removeClass("selected");
+  state.cyInstance.elements().removeClass("highlighted-neighbor");
+  state.cyInstance.elements().removeClass("faded");
 
   // 清除详情面板
-  clearDetailPanel();
+  detailPanel.clear();
 
   // 重置活跃节点
+  state.activeNodeId = null;
   window.activeNodeId = null;
 
   // 重置缩放，显示整个图
-  window.cy.animate({
+  state.cyInstance.animate({
     fit: {
       padding: 70,
     },
     duration: 800,
     easing: "ease-in-out-cubic",
   });
+
+  // 显示成功消息
+  showStatusMessage("视图已重置", "success");
 }
+
+/**
+ * 高亮含有特定标签的节点
+ * @param {string} tag - 标签
+ */
+function highlightNodesByTag(tag) {
+  if (!state.cyInstance) return;
+
+  // 重置当前高亮
+  state.cyInstance.nodes().removeClass("highlighted faded");
+
+  // 找到包含该标签的节点
+  const matchedNodes = state.cyInstance.nodes().filter((node) => {
+    const nodeTags = node.data("tags") || [];
+    return nodeTags.includes(tag);
+  });
+
+  if (matchedNodes.length === 0) {
+    return;
+  }
+
+  // 高亮匹配节点
+  matchedNodes.addClass("highlighted");
+  state.cyInstance.elements().difference(matchedNodes).addClass("faded");
+
+  // 更新视图居中显示匹配节点
+  state.cyInstance.fit(matchedNodes, 50);
+
+  // 显示"返回全局视图"按钮
+  const graphViewBtn = elements.graphViewBtn();
+  if (graphViewBtn) {
+    graphViewBtn.classList.remove("hidden");
+  }
+}
+
+/**
+ * 应用指定的布局
+ * @param {string} layoutName - 布局名称
+ * @returns {Object} - 布局实例
+ */
+function applyLayout(layoutName = "fcose") {
+  if (!state.cyInstance) {
+    console.error("无法应用布局：图谱实例未初始化");
+    return null;
+  }
+
+  // 获取布局配置
+  const layoutConfig = getFCoseLayoutOptions();
+
+  // 配置动画
+  layoutConfig.animate = true;
+  layoutConfig.animationDuration = 800;
+  layoutConfig.animationEasing = "ease-in-out";
+
+  console.log("应用布局:", layoutName);
+
+  // 应用布局到可见元素
+  const visibleElements = state.cyInstance.elements().not(".hidden");
+  const layout = visibleElements.layout(layoutConfig);
+
+  // 启动布局
+  layout.run();
+
+  return layout;
+}
+
+// 组件公开API
+export default {
+  // 初始化组件
+  init(data) {
+    if (data && elements.container()) {
+      initGraph("cy", data);
+    }
+    return this;
+  },
+
+  // 获取Cytoscape实例
+  getCy() {
+    return state.cyInstance;
+  },
+
+  // 选择节点
+  selectNode(node) {
+    selectNode(node);
+    return this;
+  },
+
+  // 重置视图
+  resetView() {
+    resetGraphViewport();
+    return this;
+  },
+
+  // 应用布局
+  applyLayout(layoutName = "fcose") {
+    return applyLayout(layoutName);
+  },
+
+  // 调整节点大小
+  adjustNodeSize() {
+    adjustNodeSizeByConnections();
+    return this;
+  },
+
+  // 高亮标签
+  highlightByTag(tag) {
+    highlightNodesByTag(tag);
+    return this;
+  },
+
+  // 获取布局选项
+  getLayoutOptions() {
+    return getFCoseLayoutOptions();
+  },
+};

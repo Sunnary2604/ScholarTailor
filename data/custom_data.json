@@ -1,1 +1,14 @@
-{"scholars": {}}
+{
+  "scholars": {
+    "tdbR5K4AAAAJ": {
+      "custom_fields": {
+        "tags": "SameField"
+      }
+    },
+    "J7a5zGEAAAAJ": {
+      "custom_fields": {
+        "tags": "HighImpact"
+      }
+    }
+  }
+}
