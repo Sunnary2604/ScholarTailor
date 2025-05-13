@@ -52,7 +52,7 @@ body {
 
 /* ===== 通用文本样式 ===== */
 .text-title {
-  font-size: var(--font-size-xl);
+  font-size: var(--font-size-lg);
   font-weight: 600;
   color: var(--dark-color);
   margin-bottom: 0.5rem;
@@ -90,7 +90,7 @@ body {
 }
 
 .text-description {
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-xs);
   color: var(--gray-dark);
   line-height: 1.5;
 }
@@ -701,10 +701,10 @@ header h1 {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-size: 0.9rem;
+  font-size: 0.8rem;
   color: #333;
   transition: all 0.2s;
-  width: 120px;
+  width: 100px;
 }
 
 .graph-controls button:hover,
@@ -751,11 +751,11 @@ header h1 {
 
 /* ===== 16. 详情面板 ===== */
 .detail-panel {
-  width: 450px;
+  width: 380px;
   background-color: white;
   box-shadow: -2px 0 5px rgba(0, 0, 0, 0.1);
   overflow-y: auto;
-  padding: 20px;
+  padding: 10px;
   position: relative;
   z-index: 5;
   height: inherit;
@@ -823,7 +823,7 @@ header h1 {
 }
 
 #scholar-name {
-  font-size: var(--font-size-xl);
+  font-size: var(--font-size-lg);
   margin: 0;
   color: var(--dark-color);
   font-weight: 600;
@@ -842,9 +842,9 @@ header h1 {
   gap: 0.5rem;
   background-color: #5a5a5a;
   color: white;
-  padding: 8px 16px;
+  padding: 8px 8px;
   border-radius: var(--border-radius-sm);
-  font-size: 0.9rem;
+  font-size: 0.8rem;
   text-decoration: none;
   border: none;
   cursor: pointer;
@@ -1702,7 +1702,7 @@ footer {
 
   .graph-controls {
     flex-direction: row;
-    padding: 0.5rem;
+    padding: 0.3rem;
   }
 
   .modal-content {
