@@ -233,7 +233,7 @@ class RelationshipDao:
             self.db_manager.rollback()
             return False
 
-    def get_scholar_relationsips(self, scholar_id, limit=100, offset=0):
+    def get_scholar_relationsips(self, scholar_id, limit=1000, offset=0):
         """获取学者的合作者
 
         Args:

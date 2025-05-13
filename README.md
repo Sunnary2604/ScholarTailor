@@ -11,6 +11,12 @@ ScholarTailor是一个轻量级学者关系可视化系统，用于展示学者�
 - **高级筛选**：多维度筛选条件支持，包括学者标签、机构、研究领域等
 - **标签系统**：为学者添加自定义标签，便于分类和筛选
 
+
+
+<img src="https://typora-1304458321.cos.ap-guangzhou.myqcloud.com/typora/image-20250513194836732.png" alt="image-20250513194836732" style="zoom: 50%;" />
+
+
+
 ## 快速开始
 
 ### 安装依赖
