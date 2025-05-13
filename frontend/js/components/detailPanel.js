@@ -4,7 +4,12 @@
  */
 
 import { getScholarById, reloadData } from "../dataManager.js";
-import { updateScholar, addScholarTag, toggleScholarHidden } from "../api.js";
+import {
+  updateScholar,
+  addScholarTag,
+  toggleScholarHidden,
+  removeScholarTag,
+} from "../api.js";
 import { showStatusMessage } from "../utils.js";
 import eventBus from "../eventBus.js";
 import graphPanel from "../components/graphPanel.js";
@@ -243,22 +248,192 @@ function _updateTags(scholar) {
     if (!tag) return; // 跳过空标签
 
     const tagSpan = document.createElement("span");
-    tagSpan.className = "tag";
+    tagSpan.className = "tag scholar-tag";
     tagSpan.textContent = tag;
+    tagSpan.setAttribute("data-tag", tag);
     tagSpan.title = "点击筛选含有此标签的节点";
 
-    // 添加点击事件
-    tagSpan.addEventListener("click", function () {
-      console.log("点击标签:", tag);
-      if (typeof graphPanel !== "undefined" && graphPanel.highlightByTag) {
-        graphPanel.highlightByTag(tag);
+    // 为标签添加右键菜单
+    tagSpan.addEventListener("contextmenu", (e) => {
+      e.preventDefault();
+
+      // 创建或获取右键菜单
+      let contextMenu = document.getElementById("tag-context-menu");
+      if (!contextMenu) {
+        contextMenu = document.createElement("div");
+        contextMenu.id = "tag-context-menu";
+        contextMenu.className = "context-menu";
+        document.body.appendChild(contextMenu);
       }
+
+      // 设置菜单内容
+      contextMenu.innerHTML = `
+        <div class="context-menu-item" data-action="delete" data-tag="${tag}" data-scholar-id="${scholar.id}">
+          <i class="fa fa-trash"></i> 删除标签
+        </div>
+      `;
+
+      // 定位菜单
+      contextMenu.style.left = `${e.pageX}px`;
+      contextMenu.style.top = `${e.pageY}px`;
+      contextMenu.style.display = "block";
+
+      // 点击菜单项处理
+      contextMenu.addEventListener("click", (menuEvent) => {
+        const item = menuEvent.target.closest(".context-menu-item");
+        if (!item) return;
+
+        const action = item.getAttribute("data-action");
+        const tagToDelete = item.getAttribute("data-tag");
+        const scholarId = item.getAttribute("data-scholar-id");
+
+        if (action === "delete" && tagToDelete && scholarId) {
+          _confirmDeleteTag(scholarId, tagToDelete);
+        }
+
+        // 隐藏菜单
+        contextMenu.style.display = "none";
+      });
+
+      // 点击其他区域关闭菜单
+      document.addEventListener(
+        "click",
+        () => {
+          if (contextMenu) {
+            contextMenu.style.display = "none";
+          }
+        },
+        { once: true }
+      );
+    });
+
+    // 添加点击事件 (保留原有功能)
+    tagSpan.addEventListener("click", () => {
+      graphPanel.highlightByTag(tag);
     });
 
     tagElements.appendChild(tagSpan);
   });
 
   tagContainer.appendChild(tagElements);
+}
+
+/**
+ * 确认删除标签
+ * @private
+ * @param {string} scholarId - 学者ID
+ * @param {string} tag - 要删除的标签
+ */
+function _confirmDeleteTag(scholarId, tag) {
+  // 创建确认对话框
+  let confirmDialog = document.getElementById("confirm-delete-tag-dialog");
+  if (!confirmDialog) {
+    confirmDialog = document.createElement("div");
+    confirmDialog.id = "confirm-delete-tag-dialog";
+    confirmDialog.className = "modal-overlay";
+    confirmDialog.innerHTML = `
+      <div class="modal-container">
+        <div class="modal-header">
+          <h3>确认删除</h3>
+          <button class="modal-close-btn">&times;</button>
+        </div>
+        <div class="modal-body">
+          <p>确定要删除标签 "<span class="tag-to-delete"></span>" 吗？</p>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary cancel-btn">取消</button>
+          <button class="btn btn-danger confirm-btn">删除</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(confirmDialog);
+
+    // 关闭按钮事件
+    confirmDialog
+      .querySelector(".modal-close-btn")
+      .addEventListener("click", () => {
+        confirmDialog.style.display = "none";
+      });
+
+    // 取消按钮事件
+    confirmDialog.querySelector(".cancel-btn").addEventListener("click", () => {
+      confirmDialog.style.display = "none";
+    });
+  }
+
+  // 设置要删除的标签
+  confirmDialog.querySelector(".tag-to-delete").textContent = tag;
+
+  // 确认按钮事件
+  const confirmBtn = confirmDialog.querySelector(".confirm-btn");
+  // 移除之前的事件监听器
+  const newConfirmBtn = confirmBtn.cloneNode(true);
+  confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+
+  // 添加新的事件监听器
+  newConfirmBtn.addEventListener("click", () => {
+    _deleteTag(scholarId, tag);
+    confirmDialog.style.display = "none";
+  });
+
+  // 显示对话框
+  confirmDialog.style.display = "flex";
+}
+
+/**
+ * 删除标签
+ * @private
+ * @param {string} scholarId - 学者ID
+ * @param {string} tag - 要删除的标签
+ */
+function _deleteTag(scholarId, tag) {
+  if (!scholarId || !tag) return;
+
+  // 显示加载状态
+  showStatusMessage("正在删除标签...", "info");
+
+  removeScholarTag(scholarId, tag)
+    .then((result) => {
+      if (result.success) {
+        showStatusMessage("标签已删除", "success");
+
+        // 更新本地学者数据
+        if (window.scholars && window.scholars[scholarId]) {
+          window.scholars[scholarId].tags = result.tags || [];
+        }
+
+        // 更新当前显示的学者
+        if (state.currentScholar && state.currentScholar.id === scholarId) {
+          state.currentScholar.tags = result.tags || [];
+          _updateTags(state.currentScholar);
+        }
+
+        // 触发标签更新事件
+        eventBus.emit("scholar:tagsUpdated", {
+          scholarId,
+          tags: result.tags || [],
+        });
+
+        // 刷新图表中的节点
+        if (window.cy) {
+          const node = window.cy.getElementById(scholarId);
+          if (node.length > 0) {
+            node.data("tags", result.tags || []);
+          }
+        }
+      } else {
+        showStatusMessage(
+          `删除标签失败: ${result.error || "未知错误"}`,
+          "error"
+        );
+      }
+    })
+    .catch((error) => {
+      showStatusMessage(
+        `删除标签失败: ${error.message || "网络错误"}`,
+        "error"
+      );
+    });
 }
 
 /**

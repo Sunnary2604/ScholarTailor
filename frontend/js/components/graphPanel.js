@@ -7,6 +7,8 @@ import { getGraphElements } from "../dataManager.js";
 import detailPanel from "./detailPanel.js";
 import eventBus from "../eventBus.js";
 import { showStatusMessage } from "../utils.js";
+import { deleteSingleRelationship } from "../api.js";
+import { reloadData } from "../dataManager.js";
 
 // 组件私有状态
 const state = {
@@ -208,10 +210,11 @@ function initGraph(containerId, data, perfOptions = {}) {
         {
           selector: 'edge[relationType="advisor"]',
           style: {
-            "line-color": "rgb(210, 140, 90)", // 低饱和度橙棕色
+            "line-color": "rgb(255, 149, 78)", // 低饱和度橙棕色
             "line-opacity": 0.9,
-            "target-arrow-color": "rgb(210, 140, 90)",
+            "target-arrow-color": "rgb(255, 149, 78)",
             "target-arrow-opacity": 0.7,
+            "target-arrow-shape": "triangle", // 添加箭头
           },
         },
         {
@@ -335,8 +338,9 @@ function initGraph(containerId, data, perfOptions = {}) {
         {
           selector: 'edge[relationType="advisor"].highlighted-neighbor',
           style: {
-            "line-color": "rgb(210, 140, 90)", // 保持与原始颜色一致
-            "target-arrow-color": "rgb(210, 140, 90)",
+            "line-color": "rgb(255, 149, 78)", // 保持与原始颜色一致
+            "target-arrow-color": "rgb(255, 149, 78)",
+            "target-arrow-shape": "triangle", // 确保高亮状态下也有箭头
           },
         },
         // 根据关系类型设置不同的高亮边样式 - colleague
@@ -389,7 +393,35 @@ function setupEventListeners(cyInstance) {
 
   // 边点击事件
   cyInstance.on("tap", "edge", function (evt) {
-    // 忽略边点击，保持最小功能
+    // 点击时不处理，在右键点击时才显示菜单
+  });
+
+  // 边右键点击事件 - 只在边上阻止默认菜单，并显示自定义菜单
+  cyInstance.on("cxttap", "edge", function (evt) {
+    const edge = evt.target;
+
+    // 阻止默认的浏览器右键菜单
+    if (evt.originalEvent) {
+      evt.originalEvent.preventDefault();
+      evt.originalEvent.stopPropagation();
+      console.log("已阻止边上的浏览器默认右键菜单");
+    }
+
+    // 获取边的数据
+    const sourceId = edge.source().id();
+    const targetId = edge.target().id();
+    const relationType = edge.data("relationType") || "coauthor";
+    const sourceName = edge.source().data("label") || sourceId;
+    const targetName = edge.target().data("label") || targetId;
+
+    // 显示右键菜单
+    showEdgeContextMenu(evt.renderedPosition, {
+      sourceId,
+      targetId,
+      relationType,
+      sourceName,
+      targetName,
+    });
   });
 
   // 图谱点击事件（空白处）
@@ -406,7 +438,20 @@ function setupEventListeners(cyInstance) {
       window.activeNodeId = null;
       // 重置缩放
       resetZoom();
+
+      // 隐藏边上下文菜单
+      // hideEdgeContextMenu();
     }
+  });
+
+  // 图谱右键点击事件（空白处或节点）- 不阻止默认菜单
+  cyInstance.on("cxttap", function (evt) {
+    // 如果点击的是边，事件会被边的cxttap事件处理器拦截
+    // 所以这里只会处理空白处或节点的右键点击
+    // 在空白处或节点上不禁用浏览器默认菜单
+    // 所以这里不需要阻止默认事件
+    // 隐藏之前可能显示的边菜单
+    // hideEdgeContextMenu();
   });
 
   // 节点悬停事件
@@ -862,6 +907,283 @@ function highlightNodesByTag(tag) {
   if (graphViewBtn) {
     graphViewBtn.classList.remove("hidden");
   }
+}
+
+/**
+ * 显示边的上下文菜单
+ * @param {Object} position - 鼠标点击的坐标
+ * @param {Object} edgeData - 边的数据
+ */
+function showEdgeContextMenu(position, edgeData) {
+  // 添加调试信息
+  console.log("显示边的右键菜单:", edgeData);
+
+  // 隐藏已有的菜单
+  hideEdgeContextMenu();
+
+  // 不允许删除coauthor类型的关系
+  if (edgeData.relationType === "coauthor") {
+    console.log("跳过coauthor类型的关系，不显示菜单");
+    return; // 直接退出，不显示菜单
+  }
+
+  try {
+    // 创建菜单元素
+    const menu = document.createElement("div");
+    menu.id = "edge-context-menu";
+    menu.className = "context-menu";
+
+    // 设置菜单内容
+    menu.innerHTML = `
+      <div class="context-menu-header">
+        关系: ${edgeData.sourceName} → ${edgeData.targetName}
+      </div>
+      <div class="context-menu-item" data-action="delete" 
+           data-source-id="${edgeData.sourceId}" 
+           data-target-id="${edgeData.targetId}" 
+           data-relation-type="${edgeData.relationType}">
+        <i class="fa fa-trash"></i> 删除关系
+      </div>
+    `;
+
+    // 设置位置 - 确保菜单不会超出视口
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    const menuWidth = 200; // 估计值
+    const menuHeight = 100; // 估计值
+
+    let left = position.x;
+    let top = position.y;
+
+    // 检查右边界
+    if (left + menuWidth > viewportWidth) {
+      left = viewportWidth - menuWidth - 10;
+    }
+
+    // 检查下边界
+    if (top + menuHeight > viewportHeight) {
+      top = viewportHeight - menuHeight - 10;
+    }
+
+    menu.style.left = `${left}px`;
+    menu.style.top = `${top}px`;
+
+    // 确保显示
+    menu.style.display = "block";
+    menu.style.visibility = "visible";
+    menu.style.opacity = "1";
+    menu.style.zIndex = "10000";
+
+    // 添加到文档
+    document.body.appendChild(menu);
+    console.log("菜单已添加到DOM", menu);
+
+    // 阻止菜单上的右键点击事件，避免浏览器菜单
+    menu.addEventListener("contextmenu", function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      return false;
+    });
+
+    // 添加菜单项点击事件
+    menu.querySelector(".context-menu-item").addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      console.log("菜单项被点击", e.target);
+      const item = e.target.closest(".context-menu-item");
+      if (!item) return;
+
+      const action = item.getAttribute("data-action");
+      if (action === "delete") {
+        const sourceId = item.getAttribute("data-source-id");
+        const targetId = item.getAttribute("data-target-id");
+        const relationType = item.getAttribute("data-relation-type");
+
+        console.log("删除关系", { sourceId, targetId, relationType });
+        _confirmDeleteRelationship(sourceId, targetId, relationType);
+      }
+
+      // 隐藏菜单
+      hideEdgeContextMenu();
+    });
+
+    // 延迟添加文档点击事件，避免立即触发
+    setTimeout(() => {
+      // 使用捕获阶段处理点击事件，确保能正确处理
+      const documentClickHandler = function (e) {
+        // 检查点击是否在菜单外部
+        if (menu && !menu.contains(e.target)) {
+          console.log("文档点击事件 - 隐藏菜单", e.target);
+          hideEdgeContextMenu();
+          document.removeEventListener("click", documentClickHandler, true);
+        }
+      };
+
+      document.addEventListener("click", documentClickHandler, true);
+    }, 300); // 增加延迟，确保不会立即触发
+
+    // 防止菜单被其他点击事件立即隐藏
+    menu.addEventListener("click", (e) => {
+      e.stopPropagation();
+    });
+  } catch (error) {
+    console.error("显示边的右键菜单失败:", error);
+  }
+}
+
+/**
+ * 隐藏边的上下文菜单
+ */
+function hideEdgeContextMenu() {
+  try {
+    const menu = document.getElementById("edge-context-menu");
+    if (menu) {
+      // 淡出效果
+      menu.style.opacity = "0";
+      // 延迟移除DOM元素
+      setTimeout(() => {
+        if (menu && menu.parentNode) {
+          menu.parentNode.removeChild(menu);
+        }
+      }, 100);
+    }
+  } catch (error) {
+    console.error("隐藏边的右键菜单失败:", error);
+    // 尝试强制移除
+    const menu = document.getElementById("edge-context-menu");
+    if (menu && menu.parentNode) {
+      menu.parentNode.removeChild(menu);
+    }
+  }
+}
+
+/**
+ * 确认删除关系
+ * @param {string} sourceId - 源节点ID
+ * @param {string} targetId - 目标节点ID
+ * @param {string} relationType - 关系类型
+ */
+function _confirmDeleteRelationship(sourceId, targetId, relationType) {
+  // 再次检查是否为coauthor关系
+  if (relationType === "coauthor") {
+    showStatusMessage("合作者关系不允许删除", "warning");
+    return;
+  }
+
+  // 获取节点名称
+  const sourceName = state.cyInstance.$id(sourceId).data("label") || sourceId;
+  const targetName = state.cyInstance.$id(targetId).data("label") || targetId;
+
+  // 创建确认对话框
+  let confirmDialog = document.getElementById(
+    "confirm-delete-relationship-dialog"
+  );
+  if (!confirmDialog) {
+    confirmDialog = document.createElement("div");
+    confirmDialog.id = "confirm-delete-relationship-dialog";
+    confirmDialog.className = "modal-overlay";
+    confirmDialog.innerHTML = `
+      <div class="modal-container">
+        <div class="modal-header">
+          <h3>确认删除关系</h3>
+          <button class="modal-close-btn">&times;</button>
+        </div>
+        <div class="modal-body">
+          <p>确定要删除 <span class="relation-source"></span> 和 <span class="relation-target"></span> 之间的关系吗？</p>
+          <p>关系类型: <strong>${
+            relationType === "advisor"
+              ? "导师"
+              : relationType === "colleague"
+              ? "同事"
+              : relationType
+          }</strong></p>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary cancel-btn">取消</button>
+          <button class="btn btn-danger confirm-btn">删除</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(confirmDialog);
+
+    // 关闭按钮事件
+    confirmDialog
+      .querySelector(".modal-close-btn")
+      .addEventListener("click", () => {
+        confirmDialog.style.display = "none";
+      });
+
+    // 取消按钮事件
+    confirmDialog.querySelector(".cancel-btn").addEventListener("click", () => {
+      confirmDialog.style.display = "none";
+    });
+  }
+
+  // 设置关系数据
+  confirmDialog.querySelector(".relation-source").textContent = sourceName;
+  confirmDialog.querySelector(".relation-target").textContent = targetName;
+
+  // 确认按钮事件
+  const confirmBtn = confirmDialog.querySelector(".confirm-btn");
+  // 移除之前的事件监听器
+  const newConfirmBtn = confirmBtn.cloneNode(true);
+  confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+
+  // 添加新的事件监听器
+  newConfirmBtn.addEventListener("click", () => {
+    _deleteRelationship(sourceId, targetId, relationType);
+    confirmDialog.style.display = "none";
+  });
+
+  // 显示对话框
+  confirmDialog.style.display = "flex";
+}
+
+/**
+ * 删除关系
+ * @param {string} sourceId - 源节点ID
+ * @param {string} targetId - 目标节点ID
+ * @param {string} relationType - 关系类型
+ */
+function _deleteRelationship(sourceId, targetId, relationType) {
+  // 显示加载状态
+  showStatusMessage("正在删除关系...", "info");
+
+  // 调用API删除关系
+  deleteSingleRelationship({
+    source_id: sourceId,
+    target_id: targetId,
+    relation_type: relationType,
+  })
+    .then((result) => {
+      if (result.success) {
+        showStatusMessage("关系已删除，正在更新图谱...", "success");
+
+        // 重新加载数据
+        reloadData()
+          .then(() => {
+            // 重新加载完成后，应用最优布局
+            applyOptimalLayout();
+            showStatusMessage("图谱已更新", "success");
+          })
+          .catch((error) => {
+            console.error("更新图谱失败:", error);
+            showStatusMessage("更新图谱失败，请手动刷新页面", "error");
+          });
+      } else {
+        showStatusMessage(
+          `删除关系失败: ${result.error || "未知错误"}`,
+          "error"
+        );
+      }
+    })
+    .catch((error) => {
+      showStatusMessage(
+        `删除关系失败: ${error.message || "网络错误"}`,
+        "error"
+      );
+    });
 }
 
 // 组件公开API

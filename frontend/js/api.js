@@ -459,6 +459,30 @@ export async function deleteRelationship(relationshipId) {
   }
 }
 
+/**
+ * 删除单个关系
+ * @param {Object} data - 关系数据 {source_id, target_id, relation_type}
+ * @returns {Promise<Object>} 删除结果
+ */
+export async function deleteSingleRelationship(data) {
+  try {
+    const response = await fetch(`${API_BASE_URL}/relationships/delete`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(data),
+    });
+    if (!response.ok) {
+      throw new Error(`HTTP错误: ${response.status}`);
+    }
+    return await response.json();
+  } catch (error) {
+    console.error("删除关系失败:", error);
+    throw error;
+  }
+}
+
 //==============================================================================
 // 系统管理相关API
 //==============================================================================
@@ -544,6 +568,37 @@ export function toggleScholarHidden(scholarId) {
       // 隐藏全局loading状态
       if (loadingIndicator) loadingIndicator.style.display = "none";
     });
+}
+
+// 删除学者标签
+/**
+ * 删除学者标签
+ * @param {string} scholarId - 学者ID
+ * @param {string} tag - 要删除的标签
+ * @returns {Promise<Object>} 删除结果
+ */
+export async function removeScholarTag(scholarId, tag) {
+  try {
+    const response = await fetch(`${API_BASE_URL}/scholars/remove-tag`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        id: scholarId,
+        tag: tag,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP错误: ${response.status}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error("删除学者标签失败:", error);
+    throw error;
+  }
 }
 
 // 导出API基础URL

@@ -80,28 +80,86 @@ class RelationshipService:
             relations_to_delete: 要删除的关系列表，每个关系应包含source_id, target_id, type字段
 
         Returns:
-            dict: {'success': bool, 'deleted': int, 'message': str, 'error': str}
+            dict: {'success': bool, 'deleted': int, 'skipped': int, 'message': str, 'error': str}
         """
         try:
             deleted_count = 0
+            skipped_count = 0
 
             for del_rel in relations_to_delete:
+                relation_type = del_rel.get("type")
+                # 跳过coauthor类型关系，不允许删除
+                if relation_type == "coauthor":
+                    skipped_count += 1
+                    continue
+
                 # 直接从数据库中删除
                 result = self.relationship_dao.delete_relationship(
                     del_rel.get("source_id"),
                     del_rel.get("target_id"),
-                    del_rel.get("type"),
+                    relation_type,
                 )
 
                 if result:
                     deleted_count += 1
 
+            # 生成结果消息，包含跳过的数量信息
+            message = f"成功删除 {deleted_count} 个关系"
+            if skipped_count > 0:
+                message += f"，跳过 {skipped_count} 个合作者关系（不允许删除）"
+
             return {
-                "success": deleted_count > 0,
+                "success": deleted_count > 0 or skipped_count > 0,
                 "deleted": deleted_count,
-                "message": f"成功删除 {deleted_count} 个关系",
+                "skipped": skipped_count,
+                "message": message,
             }
 
         except Exception as e:
             self.logger.error(f"批量删除关系时出错: {str(e)}")
+            return {"success": False, "error": str(e)}
+
+    def delete_relationship(self, source_id, target_id, relation_type):
+        """删除单个关系
+
+        Args:
+            source_id: 源实体ID
+            target_id: 目标实体ID
+            relation_type: 关系类型
+
+        Returns:
+            dict: {'success': bool, 'message': str, 'error': str}
+        """
+        try:
+            # 不允许删除coauthor类型的关系
+            if relation_type == "coauthor":
+                self.logger.warning(
+                    f"尝试删除coauthor关系被拒绝: {source_id} -> {target_id}"
+                )
+                return {"success": False, "error": "不允许删除合作者关系"}
+
+            # 检查关系是否存在
+            if not self.relationship_dao.relationship_exists(
+                source_id, target_id, relation_type
+            ):
+                return {"success": False, "error": "指定的关系不存在"}
+
+            # 执行删除操作
+            result = self.relationship_dao.delete_relationship(
+                source_id, target_id, relation_type
+            )
+
+            if result:
+                self.logger.info(
+                    f"成功删除关系: {source_id} -> {target_id}, 类型: {relation_type}"
+                )
+                return {"success": True, "message": "成功删除关系"}
+            else:
+                self.logger.warning(
+                    f"删除关系失败: {source_id} -> {target_id}, 类型: {relation_type}"
+                )
+                return {"success": False, "error": "删除关系失败"}
+
+        except Exception as e:
+            self.logger.error(f"删除关系时出错: {str(e)}")
             return {"success": False, "error": str(e)}

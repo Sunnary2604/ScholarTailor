@@ -27,9 +27,10 @@
             <input type="text" id="search-input" placeholder="搜索学者..." />
             <button class="btn btn-primary" id="search-btn">搜索</button>
           </div>
-          <button id="admin-btn" class="nav-btn" title="管理面板">
+          <!-- <button id="admin-btn" class="nav-btn" title="管理面板">
             <i class="fas fa-cog"></i>
-          </button>
+          </button> -->
+          <!-- 帮助按钮将在helpPanel.js中动态创建 -->
         </div>
       </header>
 
@@ -429,7 +430,7 @@
           <!-- 选项卡导航 -->
           <div class="tabs">
             <button class="tab-btn active" data-tab="scholars">添加学者</button>
-            <button class="tab-btn" data-tab="relationships">管理关系</button>
+            <button class="tab-btn" data-tab="relationships">添加关系</button>
           </div>
 
           <!-- 添加学者选项卡 -->
@@ -484,7 +485,7 @@
           <!-- 管理关系选项卡 -->
           <div id="manage-relationships-tab" class="tab-content">
             <div class="section-header">
-              <h3 class="text-heading">关系管理</h3>
+              <h3 class="text-heading">添加2个学者之间的关系</h3>
             </div>
 
             <div class="relationship-add">
@@ -544,40 +545,7 @@
       </div>
     </div>
 
-    <!-- 引入JavaScript模块 -->
-    <script type="module">
-      import { init } from "./js/core.js";
-      import detailPanel from "./js/components/detailPanel.js";
-      import filterPanel from "./js/components/filterPanel.js";
-      import addPanel from "./js/components/addPanel.js";
-      import searchPanel from "./js/components/searchPanel.js";
-      import adminPanel from "./js/components/adminPanel.js";
-      import graphPanel from "./js/components/graphPanel.js";
-      import * as dataManager from "./js/dataManager.js";
-
-      // 等待DOM加载完成后初始化
-      document.addEventListener("DOMContentLoaded", () => {
-        // 初始化应用核心
-        init()
-          .then(() => {
-            // 初始化组件
-            detailPanel.init();
-            filterPanel.init();
-            graphPanel.init();
-            addPanel.init();
-            searchPanel.init();
-            adminPanel.init();
-
-            // 初始化数据管理器
-            dataManager.init({
-              scholars: window.scholars || {},
-            });
-          })
-          .catch((error) => {
-            console.error("初始化失败:", error);
-            alert("系统初始化失败，请刷新页面重试。");
-          });
-      });
-    </script>
+    <!-- 引入JavaScript文件 -->
+    <script type="module" src="js/app.js"></script>
   </body>
 </html>

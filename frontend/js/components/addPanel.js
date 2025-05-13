@@ -71,13 +71,34 @@ function render() {
 
   // 更新面板可见性
   if (state.isVisible) {
-    modal.style.display = "block";
+    // 使用flex布局和visible类
+    modal.style.display = "flex";
+    modal.classList.add("visible");
+
+    // 添加内容动画效果
+    const modalContent = modal.querySelector(".modal-content");
+    if (modalContent) {
+      setTimeout(() => {
+        modalContent.classList.add("visible");
+      }, 10);
+    }
+
     // 面板显示时确保更新标签，但使用setTimeout避免争用问题
     setTimeout(() => {
       updateActiveTab();
     }, 50);
   } else {
-    modal.style.display = "none";
+    // 开始动画关闭过程
+    modal.classList.remove("visible");
+    const modalContent = modal.querySelector(".modal-content");
+    if (modalContent) {
+      modalContent.classList.remove("visible");
+    }
+
+    // 延迟隐藏，以便动画完成
+    setTimeout(() => {
+      modal.style.display = "none";
+    }, 300);
   }
 }
 
@@ -496,24 +517,36 @@ function setupEventListeners() {
 
   // 面板触发按钮
   if (panelTriggerBtn) {
-    panelTriggerBtn.addEventListener("click", () => {
+    panelTriggerBtn.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
       show();
     });
   }
 
   // 右上角关闭按钮
   if (closeBtn) {
-    closeBtn.addEventListener("click", () => {
+    closeBtn.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
       hide();
     });
   }
 
-  // 点击模态框背景关闭
+  // 点击模态框背景关闭 - 使用mousedown事件替代click事件
   if (modal) {
-    modal.addEventListener("click", (event) => {
+    modal.addEventListener("mousedown", (event) => {
       if (event.target === modal) {
         hide();
       }
+    });
+  }
+
+  // 防止模态内容点击事件冒泡
+  const modalContent = modal.querySelector(".modal-content");
+  if (modalContent) {
+    modalContent.addEventListener("mousedown", (event) => {
+      event.stopPropagation();
     });
   }
 

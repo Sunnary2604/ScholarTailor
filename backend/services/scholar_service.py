@@ -993,3 +993,37 @@ class ScholarService:
         except Exception as e:
             self.logger.error(f"将学者转换为主要学者时出错: {str(e)}")
             return {"success": False, "error": str(e)}
+
+    def remove_scholar_tag(self, scholar_id, tag):
+        """删除学者标签
+
+        Args:
+            scholar_id: 学者ID
+            tag: 要删除的标签
+
+        Returns:
+            dict: {'success': bool, 'error': str, 'tags': list}
+        """
+        try:
+            if not scholar_id or not tag:
+                return {"success": False, "error": "缺少必要参数"}
+
+            # 检查学者是否存在
+            if not self.scholar_dao.scholar_exists(scholar_id):
+                return {"success": False, "error": f"学者 {scholar_id} 不存在"}
+
+            # 删除标签
+            if not self.interest_dao.delete_interest(scholar_id, tag):
+                return {"success": False, "error": "删除标签失败"}
+
+            # 获取更新后的标签列表
+            interests_data = self.interest_dao.get_entity_interests(scholar_id)
+            tags = [item["interest"] for item in interests_data if item["is_custom"] == 1]
+
+            # 返回成功结果和更新后的标签列表
+            return {"success": True, "tags": tags}
+
+        except Exception as e:
+            error_msg = f"删除学者标签时出错: {str(e)}"
+            self.logger.error(error_msg)
+            return {"success": False, "error": error_msg}

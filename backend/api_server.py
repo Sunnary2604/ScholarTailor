@@ -390,6 +390,31 @@ def add_scholar_tag():
     return resp.from_result(result, resp.COMMON_ERROR_MAPPING)
 
 
+# API端点：删除学者标签
+@app.route("/api/scholars/remove-tag", methods=["POST"])
+def remove_scholar_tag():
+    """删除学者标签接口"""
+    try:
+        data = request.get_json()
+        scholar_id = data.get("id")
+        tag = data.get("tag")
+
+        if not scholar_id or not tag:
+            return jsonify({"success": False, "error": "缺少必要参数"}), 400
+
+        result = scholar_service.remove_scholar_tag(scholar_id, tag)
+
+        if result.get("success"):
+            return jsonify(result)
+        else:
+            return jsonify(result), 400
+
+    except Exception as e:
+        error_msg = f"删除学者标签时出错: {str(e)}"
+        logging.error(error_msg)
+        return jsonify({"success": False, "error": error_msg}), 500
+
+
 # API端点：初始化数据库
 @app.route("/api/initialize-database", methods=["POST"])
 def initialize_database():
@@ -530,6 +555,56 @@ def toggle_scholar_hidden():
         error_msg = f"切换学者显示/隐藏状态时出错: {str(e)}"
         app.logger.error(error_msg)
         return resp.error(error_msg, 500)
+
+
+# API端点：删除单个关系
+@app.route("/api/relationships/delete", methods=["POST"])
+def delete_relationship():
+    """删除单个关系API
+
+    接收JSON参数:
+    {
+        "source_id": "源实体ID",
+        "target_id": "目标实体ID",
+        "relation_type": "关系类型"
+    }
+
+    返回:
+    {
+        "success": true/false,
+        "message": "成功/错误信息"
+    }
+    """
+    try:
+        data = request.json
+        if not data:
+            return jsonify({"success": False, "error": "缺少请求数据"})
+
+        # 验证必要参数
+        required_fields = ["source_id", "target_id", "relation_type"]
+        for field in required_fields:
+            if field not in data:
+                return jsonify({"success": False, "error": f"缺少必要参数: {field}"})
+
+        # 调用服务删除关系
+        result = relationship_service.delete_relationship(
+            data["source_id"], data["target_id"], data["relation_type"]
+        )
+
+        # 如果删除成功，重新生成网络数据
+        if result["success"]:
+            try:
+                data_service.regenerate_network_data()
+            except Exception as regen_error:
+                app.logger.warning(f"重新生成网络数据时出错: {str(regen_error)}")
+                # 不中断流程，继续返回成功结果
+
+        return jsonify(result)
+
+    except Exception as e:
+        error_msg = f"删除关系时出错: {str(e)}"
+        app.logger.error(error_msg)
+        return jsonify({"success": False, "error": error_msg}), 500
 
 
 # 全局错误处理
