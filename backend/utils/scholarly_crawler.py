@@ -147,9 +147,7 @@ class ScholarCrawler:
             # 添加更新日期
             detailed_author["last_updated"] = datetime.now().isoformat()
 
-            # 确保homepage字段存在
-            if "homepage" not in detailed_author and "url_picture" in detailed_author:
-                detailed_author["homepage"] = detailed_author.get("url_picture", "")
+
 
             # 保存到JSON文件（只在需要时执行）
             if os.environ.get("SAVE_SCHOLAR_DATA", "0") == "1":

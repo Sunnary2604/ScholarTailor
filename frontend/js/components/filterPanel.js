@@ -153,11 +153,11 @@ function addFilterCondition() {
       </div>
       
       <input type="text" class="filter-value-input" placeholder="输入筛选值">
-      
-      <button class="remove-filter-btn" onclick="window.filterPanelMethods.removeFilterCondition('${filterId}')">
-        <i class="fas fa-times"></i>
-      </button>
+
     </div>
+     <button class="remove-filter-btn" onclick="window.filterPanelMethods.removeFilterCondition('${filterId}')">
+        <i class="fas fa-times fa-lg"></i>
+      </button>
   `;
 
   // 添加到容器
@@ -213,17 +213,41 @@ function updateFilterOperators(dimensionSelect) {
       <option value="lt">小于</option>
       <option value="eq">等于</option>
     `;
-    valueInput.type = "number";
-    valueInput.min = "0";
 
-    // 年份特殊处理
-    if (dimension === "yearFrom" || dimension === "yearTo") {
-      valueInput.min = "1900";
-      valueInput.max = "2100";
-      valueInput.placeholder =
-        dimension === "yearFrom" ? "起始年份" : "结束年份";
+    // 如果是数字类型的输入框
+    if (valueInput.tagName.toLowerCase() === "select") {
+      // 如果当前是select，需要替换为input
+      const numInput = document.createElement("input");
+      numInput.type = "number";
+      numInput.className = "filter-value-input";
+      numInput.min = "0";
+
+      // 年份特殊处理
+      if (dimension === "yearFrom" || dimension === "yearTo") {
+        numInput.min = "1900";
+        numInput.max = "2100";
+        numInput.placeholder =
+          dimension === "yearFrom" ? "起始年份" : "结束年份";
+      } else {
+        numInput.placeholder = "输入数值";
+      }
+
+      // 替换元素
+      valueInput.parentNode.replaceChild(numInput, valueInput);
     } else {
-      valueInput.placeholder = "输入数值";
+      // 已经是input，只需调整属性
+      valueInput.type = "number";
+      valueInput.min = "0";
+
+      // 年份特殊处理
+      if (dimension === "yearFrom" || dimension === "yearTo") {
+        valueInput.min = "1900";
+        valueInput.max = "2100";
+        valueInput.placeholder =
+          dimension === "yearFrom" ? "起始年份" : "结束年份";
+      } else {
+        valueInput.placeholder = "输入数值";
+      }
     }
   } else if (dimension === "tagFilter" || dimension === "institutionType") {
     // 标签或机构类型，使用选择框
@@ -231,37 +255,35 @@ function updateFilterOperators(dimensionSelect) {
       <option value="eq">等于</option>
     `;
 
-    // 将输入框替换为选择框
-    const selectBox = document.createElement("select");
-    selectBox.className = "filter-value-input";
+    // 如果当前不是select，需要替换
+    if (valueInput.tagName.toLowerCase() !== "select") {
+      // 创建选择框
+      const selectBox = document.createElement("select");
+      selectBox.className = "filter-value-input";
 
-    if (dimension === "tagFilter") {
-      // 加载标签选项
-      selectBox.innerHTML = `
-        <option value="">-- 选择标签 --</option>
-        <option value="SameField">相同领域</option>
-        <option value="Interested">感兴趣</option>
-        <option value="HighImpact">高影响力</option>
-      `;
-      // 添加用户自定义标签
-      loadTagsForFilter(selectBox);
-    } else if (dimension === "institutionType") {
-      // 机构类型选项
-      selectBox.innerHTML = `
-        <option value="">-- 选择机构类型 --</option>
-        <option value="university">大学</option>
-        <option value="research">研究所</option>
-        <option value="industry">企业</option>
-        <option value="government">政府机构</option>
-      `;
-    }
+      if (dimension === "tagFilter") {
+        // 加载标签选项
+        selectBox.innerHTML = `
+          <option value="">-- 选择标签 --</option>
+          <option value="SameField">相同领域</option>
+          <option value="Interested">感兴趣</option>
+          <option value="HighImpact">高影响力</option>
+        `;
+        // 添加用户自定义标签
+        loadTagsForFilter(selectBox);
+      } else if (dimension === "institutionType") {
+        // 机构类型选项
+        selectBox.innerHTML = `
+          <option value="">-- 选择机构类型 --</option>
+          <option value="university">大学</option>
+          <option value="research">研究所</option>
+          <option value="industry">企业</option>
+          <option value="government">政府机构</option>
+        `;
+      }
 
-    // 替换输入框
-    const filterContent = filterItem.querySelector(".filter-content");
-    if (filterContent) {
-      // 找到原输入框并替换
-      const oldInput = valueInput;
-      filterContent.replaceChild(selectBox, oldInput);
+      // 替换元素
+      valueInput.parentNode.replaceChild(selectBox, valueInput);
     }
   } else {
     // 文本搜索操作符
@@ -269,8 +291,25 @@ function updateFilterOperators(dimensionSelect) {
       <option value="contains">包含</option>
       <option value="equals">等于</option>
     `;
-    valueInput.type = "text";
-    valueInput.placeholder = "输入关键词";
+
+    // 如果不是普通文本输入框，需要替换
+    if (
+      valueInput.tagName.toLowerCase() !== "input" ||
+      valueInput.type !== "text"
+    ) {
+      // 创建文本输入框
+      const textInput = document.createElement("input");
+      textInput.type = "text";
+      textInput.className = "filter-value-input";
+      textInput.placeholder = "输入关键词";
+
+      // 替换元素
+      valueInput.parentNode.replaceChild(textInput, valueInput);
+    } else {
+      // 已经是文本输入框，只需调整属性
+      valueInput.type = "text";
+      valueInput.placeholder = "输入关键词";
+    }
   }
 }
 
@@ -501,6 +540,15 @@ function applyAdvancedFilterViaAPI(filterParams) {
           `筛选成功：找到 ${data.data.nodes.length} 个学者节点`,
           "success"
         );
+
+        // 导入graphPanel模块并应用最优布局
+        import("../components/graphPanel.js").then((graphPanelModule) => {
+          const graphPanel = graphPanelModule.default;
+          // 延迟一些时间等待图谱更新完成
+          setTimeout(() => {
+            graphPanel.applyOptimalLayout();
+          }, 500);
+        });
       } else {
         showFilterStatus(`筛选错误：${data.error || "未知错误"}`, "error");
         // 出错时应用基本筛选

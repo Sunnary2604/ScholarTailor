@@ -509,5 +509,42 @@ export async function migrateData(dataDir = null) {
   }
 }
 
+// 添加一个辅助函数来处理API响应
+function handleResponse(response) {
+  if (!response.ok) {
+    throw new Error(`HTTP错误: ${response.status}`);
+  }
+  return response.json();
+}
+
+// 处理API错误
+function handleError(error) {
+  console.error("API请求失败:", error);
+  throw error;
+}
+
+// 更新toggleScholarHidden函数使用这些辅助函数并添加适当的loading状态处理
+export function toggleScholarHidden(scholarId) {
+  // 显示全局loading状态
+  const loadingIndicator = document.getElementById("global-loading");
+  if (loadingIndicator) loadingIndicator.style.display = "block";
+
+  return fetch("/api/scholars/toggle-hidden", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      scholar_id: scholarId,
+    }),
+  })
+    .then(handleResponse)
+    .catch(handleError)
+    .finally(() => {
+      // 隐藏全局loading状态
+      if (loadingIndicator) loadingIndicator.style.display = "none";
+    });
+}
+
 // 导出API基础URL
 export { API_BASE_URL };

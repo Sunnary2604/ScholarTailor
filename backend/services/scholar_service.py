@@ -190,10 +190,22 @@ class ScholarService:
             # 提取学者名称和基本信息
             scholar_name = scholar_data.get("name", "Unknown Scholar")
 
+            # 如果citations字段存在但citedby不存在，使用citations作为citedby
+            if "citedby" not in scholar_data and "citations" in scholar_data:
+                scholar_data["citedby"] = scholar_data["citations"]
+
+            # 确保关键字段存在，即使为空值
+            for field in ["homepage", "url_picture"]:
+                if field not in scholar_data:
+                    scholar_data[field] = ""
+
             # 1. 创建或更新学者详情记录
-            self.scholar_dao.create_scholar(
+            create_result = self.scholar_dao.create_scholar(
                 scholar_id, scholar_data, is_main_scholar=is_main_scholar
             )
+
+            if not create_result:
+                return {"success": False, "error": "创建/更新学者记录失败"}
 
             # 2. 创建学者实体
             entity_data = {

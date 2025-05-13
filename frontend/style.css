@@ -1262,7 +1262,6 @@ header h1 {
 .custom-filter-item {
   display: flex;
   flex-wrap: wrap;
-  align-items: flex-end;
   gap: 10px;
   background-color: #f9f9f9;
   padding: 12px;
@@ -1273,45 +1272,56 @@ header h1 {
 }
 
 .filter-content {
-  width: 100%;
+  width: 90%;
   display: flex;
   flex-direction: column;
+  position: relative;
+}
+
+.filter-condition-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+  width: 100%;
 }
 
 .filter-dimension-select {
   flex: 2;
-  min-width: 200px;
+  min-width: 180px;
+  height: 38px;
+  padding: 8px 10px;
+  border: 1px solid #ddd;
+  border-radius: var(--border-radius-sm);
+  font-size: var(--font-size-sm);
 }
 
 .filter-operator-select {
-  width: 120px;
-  min-width: 120px;
+  width: 100px;
+  min-width: 100px;
+  height: 38px;
+  padding: 8px 10px;
+  border: 1px solid #ddd;
+  border-radius: var(--border-radius-sm);
+  font-size: var(--font-size-sm);
 }
 
 .filter-value-input {
   flex: 1;
   min-width: 150px;
+  height: 38px;
+  padding: 8px 10px;
+  border: 1px solid #ddd;
+  border-radius: var(--border-radius-sm);
+  font-size: var(--font-size-sm);
+  margin-bottom: 0;
 }
 
-.remove-filter-btn {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  background: none;
-  border: none;
-  color: var(--gray-dark);
-  cursor: pointer;
-  width: 24px;
-  height: 24px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-}
-
-.remove-filter-btn:hover {
-  background-color: rgba(0, 0, 0, 0.05);
-  color: var(--warning-color);
+.custom-filters-container {
+  max-height: 300px;
+  overflow-y: auto;
+  margin-bottom: 15px;
+  padding-right: 5px;
 }
 
 /* 筛选标签样式 */
@@ -1741,4 +1751,25 @@ footer {
   color: var(--gray-dark);
   font-style: italic;
   font-size: var(--font-size-sm);
+}
+
+.remove-filter-btn {
+  background-color: rgba(255, 255, 255, 0.9);
+  border: 1px solid #ddd;
+  color: var(--warning-color);
+  cursor: pointer;
+  width: 7%;
+  height: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 5px;
+  z-index: 10;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.remove-filter-btn:hover {
+  background-color: var(--warning-color);
+  color: white;
+  transform: scale(1.1);
 }

@@ -418,7 +418,7 @@ export async function reloadData() {
     // 应用布局
     try {
       console.log("DEBUGTAG: 应用图谱布局");
-      graphPanel.applyLayout();
+      graphPanel.applyOptimalLayout();
       console.log("DEBUGTAG: 图谱布局应用完成");
 
       // 显示加载完成状态
@@ -483,211 +483,130 @@ export function loadAdminPanelData() {
 }
 
 /**
- * 从数据创建图谱元素
- * @param {Object} data - 网络数据 {nodes, edges}
- * @param {boolean} preFilter - 是否预先过滤节点
+ * 将网络数据转换为Cytoscape元素
+ * @param {Object} networkData - 网络数据，包含nodes和edges
+ * @param {boolean} includeData - 是否包含额外数据，默认为true
  * @param {boolean} hideNotInterested - 是否隐藏不感兴趣的学者，默认为true
- * @returns {Array} 图谱元素数组
+ * @returns {Array} - Cytoscape元素数组
  */
 export function getGraphElements(
-  data,
-  preFilter = true,
+  networkData,
+  includeData = true,
   hideNotInterested = true
 ) {
-  if (!data) return [];
+  if (!networkData || !networkData.nodes || !networkData.edges) {
+    console.error("无效的网络数据", networkData);
+    return [];
+  }
 
-  console.time("生成图谱元素");
-  console.log("=== getGraphElements 函数开始处理数据 ===");
-  console.log("接收的数据节点总数:", data.nodes ? data.nodes.length : 0);
-  console.log("接收的数据边总数:", data.edges ? data.edges.length : 0);
   console.log("是否隐藏不感兴趣的学者:", hideNotInterested);
 
-  // 预先计算节点连接数量，用于后续处理和预筛选
-  const nodeConnections = {};
-  if (data.edges) {
-    for (const edge of data.edges) {
-      if (!nodeConnections[edge.source]) nodeConnections[edge.source] = 0;
-      if (!nodeConnections[edge.target]) nodeConnections[edge.target] = 0;
-      nodeConnections[edge.source]++;
-      nodeConnections[edge.target]++;
-    }
-  }
-
-  // 第一步：创建全部元素
   const elements = [];
-  const maxBatchSize = 1000; // 元素批处理最大数量
 
-  // 批量处理节点
-  if (data.nodes) {
-    const nodeBatches = [];
-    let currentBatch = [];
+  // 处理节点
+  networkData.nodes.forEach((node) => {
+    if (!node.id) {
+      console.warn("节点缺少ID:", node);
+      return;
+    }
 
-    for (const node of data.nodes) {
-      // 跳过被标记为"不感兴趣"的学者节点（is_main_scholar=2），如果hideNotInterested为true
-      if (hideNotInterested && node.data && node.data.is_main_scholar === 2) {
-        console.log(
-          `跳过不感兴趣学者节点: ${node.id} (${
-            node.name || node.data?.name || "未命名"
-          })`
-        );
-        continue;
-      }
+    // 跳过被标记为"隐藏"的学者节点（is_hidden=1），如果hideNotInterested为true
+    if (hideNotInterested && node.data && node.data.is_hidden === 1) {
+      console.log(`跳过隐藏的学者节点: ${node.id}`);
+      return;
+    }
 
-      // 确保使用name作为label，如果没有name则使用id
-      const nodeLabel = node.name || node.data?.name || node.id || "未命名";
+    // 确定节点类型
+    let nodeType = "secondary";
 
-      // 处理学者类型
-      let nodeType = node.group || "primary";
-
-      // 如果有is_main_scholar属性，根据它确定节点类型
-      if (node.data && node.data.is_main_scholar !== undefined) {
-        if (node.data.is_main_scholar === 1) {
-          nodeType = "primary";
-        } else if (node.data.is_main_scholar === 0) {
-          nodeType = "secondary";
-        }
-      }
-
-      currentBatch.push({
-        data: {
-          id: node.id,
-          label: nodeLabel,
-          nodeType: nodeType,
-          ...node.data,
-        },
-        group: "nodes",
-      });
-
-      // 达到批处理数量时，添加到最终元素列表
-      if (currentBatch.length >= maxBatchSize) {
-        nodeBatches.push(currentBatch);
-        currentBatch = [];
+    // 如果有group属性，使用它
+    if (node.group) {
+      if (node.group === "primary") {
+        nodeType = "primary";
+      } else if (node.group === "not-interested") {
+        nodeType = "not-interested";
       }
     }
 
-    // 添加最后一批节点
-    if (currentBatch.length > 0) {
-      nodeBatches.push(currentBatch);
+    // 如果有is_main_scholar属性，根据它确定节点类型
+    if (node.data && node.data.is_main_scholar !== undefined) {
+      if (node.data.is_main_scholar === 1) {
+        nodeType = "primary";
+      } else if (node.data.is_main_scholar === 0) {
+        nodeType = "secondary";
+      }
     }
 
-    // 将所有批次添加到元素列表
-    nodeBatches.forEach((batch) => {
-      elements.push(...batch);
-    });
-  }
+    // 如果is_hidden为1，设置为not-interested类型
+    if (node.data && node.data.is_hidden === 1) {
+      nodeType = "not-interested";
+    }
 
-  // 批量处理边 - 新增边重复检测
-  if (data.edges) {
-    const edgeBatches = [];
-    let currentBatch = [];
+    // 如果group为not-interested，直接应用此类型
+    if (node.group === "not-interested") {
+      nodeType = "not-interested";
+    }
 
-    // 创建一个Map来存储节点对之间的所有关系
-    const edgeMap = new Map();
-
-    // 关系类型优先级
-    const relationPriority = {
-      advisor: 1,
-      colleague: 2,
-      coauthor: 3,
+    // 创建Cytoscape节点
+    const cyNode = {
+      group: "nodes",
+      data: {
+        id: node.id,
+        label: node.label || `Node-${node.id}`,
+        nodeType: nodeType,
+      },
     };
 
-    // 第一遍遍历：收集所有边的信息
-    for (const edge of data.edges) {
-      // 检查源节点和目标节点是否存在于元素列表中
-      // 如果节点是不感兴趣的学者（已被跳过），则跳过相关的边
-      const sourceNode = elements.find((el) => el.data.id === edge.source);
-      const targetNode = elements.find((el) => el.data.id === edge.target);
-
-      if (!sourceNode || !targetNode) {
-        console.log(
-          `跳过边 ${edge.source}-${edge.target}，因为至少有一个端点不存在于图中`
-        );
-        continue;
-      }
-
-      // 创建边的唯一标识（按字母顺序排序节点ID）
-      const [node1, node2] = [edge.source, edge.target].sort();
-      const edgeKey = `${node1}-${node2}`;
-
-      if (!edgeMap.has(edgeKey)) {
-        edgeMap.set(edgeKey, {
-          source: edge.source,
-          target: edge.target,
-          relations: new Set(),
-          weights: new Map(),
-          highestPriorityType: null,
-        });
-      }
-
-      const edgeInfo = edgeMap.get(edgeKey);
-      const relationType = edge.label || "";
-      edgeInfo.relations.add(relationType);
-      edgeInfo.weights.set(relationType, edge.weight || 1);
-
-      // 更新最高优先级的关系类型
-      if (
-        !edgeInfo.highestPriorityType ||
-        relationPriority[relationType] <
-          relationPriority[edgeInfo.highestPriorityType]
-      ) {
-        console.log(
-          `更新边 ${edgeKey} 的关系类型优先级: ${edgeInfo.highestPriorityType} -> ${relationType}`
-        );
-        edgeInfo.highestPriorityType = relationType;
-      }
+    // 添加额外数据
+    if (includeData && node.data) {
+      Object.assign(cyNode.data, node.data);
     }
 
-    // 第二遍遍历：根据优先级创建边
-    for (const [edgeKey, edgeInfo] of edgeMap) {
-      // 使用最高优先级的关系类型
-      const relationType = edgeInfo.highestPriorityType || "coauthor";
-      const weight = edgeInfo.weights.get(relationType) || 1;
+    elements.push(cyNode);
+  });
 
-      // 记录关系类型和所有关系
-      console.log(
-        `创建边 ${edgeKey}，主要关系: ${relationType}, 所有关系: [${Array.from(
-          edgeInfo.relations
-        ).join(", ")}]`
-      );
+  // 使用Set来记录已处理的边对，防止重复
+  const processedEdges = new Set();
 
-      // 创建边对象
-      currentBatch.push({
-        data: {
-          id: edgeKey,
-          source: edgeInfo.source,
-          target: edgeInfo.target,
-          label: "", // 默认不显示标签
-          weight: weight,
-          relationType: relationType,
-          allRelations: Array.from(edgeInfo.relations), // 保存所有关系类型
-        },
-        group: "edges",
-      });
-
-      // 达到批处理数量时，添加到最终元素列表
-      if (currentBatch.length >= maxBatchSize) {
-        edgeBatches.push(currentBatch);
-        currentBatch = [];
-      }
+  // 处理边
+  networkData.edges.forEach((edge) => {
+    if (!edge.source || !edge.target) {
+      console.warn("边缺少源或目标:", edge);
+      return;
     }
 
-    // 添加最后一批边
-    if (currentBatch.length > 0) {
-      edgeBatches.push(currentBatch);
+    // 创建无序的边标识符，使得A->B和B->A被视为相同的边
+    const edgePair = [edge.source, edge.target].sort().join("-");
+
+    // 如果这条边已经处理过，则跳过
+    if (processedEdges.has(edgePair)) {
+      console.log(`跳过重复的边: ${edge.source} - ${edge.target}`);
+      return;
     }
 
-    // 将所有批次添加到元素列表
-    edgeBatches.forEach((batch) => {
-      elements.push(...batch);
-    });
-  }
+    // 标记这条边为已处理
+    processedEdges.add(edgePair);
 
-  console.timeEnd("生成图谱元素");
-  console.log(
-    `最终生成了 ${
-      elements.filter((el) => el.group !== "edges").length
-    } 个节点和 ${elements.filter((el) => el.group === "edges").length} 条边`
-  );
+    // 创建Cytoscape边
+    const cyEdge = {
+      group: "edges",
+      data: {
+        id: `${edge.source}-${edge.target}`,
+        source: edge.source,
+        target: edge.target,
+        label: edge.label || "",
+        weight: edge.weight || 1,
+        relationType: edge.label || "coauthor", // 确保有relationType字段用于样式
+      },
+    };
+
+    // 添加额外数据
+    if (includeData && edge.data) {
+      Object.assign(cyEdge.data, edge.data);
+    }
+
+    elements.push(cyEdge);
+  });
 
   return elements;
 }
@@ -756,24 +675,18 @@ export function updateNetworkWithFilteredData(networkData, filterOptions = {}) {
     // 如果节点数量过少，应用特殊布局
     if (elements.length < 20) {
       console.log("节点数量较少，应用circle布局");
-      window.cy
-        .layout({
-          name: "circle",
-          animate: true,
-          animationDuration: 500,
-        })
-        .run();
+      // 使用graphPanel提供的布局函数
+      import("./components/graphPanel.js").then((graphPanelModule) => {
+        const graphPanel = graphPanelModule.default;
+        graphPanel.applyLayout("circle");
+      });
     } else {
-      console.log("应用fcose布局");
-      // 应用fcose布局
-      window.cy
-        .layout({
-          name: "fcose",
-          animationDuration: 1000,
-          quality: "proof",
-          animate: true,
-        })
-        .run();
+      console.log("应用优化的fcose布局");
+      // 使用graphPanel提供的最优布局
+      import("./components/graphPanel.js").then((graphPanelModule) => {
+        const graphPanel = graphPanelModule.default;
+        graphPanel.applyLayout("fcose");
+      });
     }
 
     // 触发图谱更新事件

@@ -22,7 +22,8 @@ CREATE TABLE IF NOT EXISTS scholars (
     public_access_available INTEGER DEFAULT 0,
     public_access_unavailable INTEGER DEFAULT 0,
     last_updated TIMESTAMP,
-    is_main_scholar INTEGER DEFAULT 0
+    is_main_scholar INTEGER DEFAULT 0,
+    is_hidden INTEGER DEFAULT 0
 );
 
 -- 论文表 - 使用cites_id作为主键
@@ -117,6 +118,7 @@ CREATE INDEX IF NOT EXISTS idx_interests ON interests(interest);
 CREATE INDEX IF NOT EXISTS idx_publication_cites_id ON publications(cites_id);
 CREATE INDEX IF NOT EXISTS idx_publication_pub_id ON publications(pub_id);
 CREATE INDEX IF NOT EXISTS idx_scholar_main ON scholars(is_main_scholar);
+CREATE INDEX IF NOT EXISTS idx_scholar_hidden ON scholars(is_hidden);
 CREATE INDEX IF NOT EXISTS idx_scholar_institutions ON scholar_institutions(scholar_id, inst_id);
 """
 
@@ -193,6 +195,42 @@ def init_db(db_manager):
             )
             db_manager.commit()
             print("数据库升级完成：更新了表结构")
+        except Exception as e:
+            print(f"数据库升级失败: {str(e)}")
+            db_manager.rollback()
+
+    if current_version < 4:
+        try:
+            # 检查字段是否已存在
+            cursor = db_manager.execute("PRAGMA table_info(scholars)")
+            columns = cursor.fetchall()
+            has_is_hidden = any(col["name"] == "is_hidden" for col in columns)
+
+            if not has_is_hidden:
+                print("添加 is_hidden 字段到 scholars 表...")
+                db_manager.execute(
+                    "ALTER TABLE scholars ADD COLUMN is_hidden INTEGER DEFAULT 0"
+                )
+
+                # 将is_main_scholar为2的学者设置为隐藏
+                db_manager.execute(
+                    """
+                UPDATE scholars 
+                SET is_hidden = 1 
+                WHERE is_main_scholar = 2
+                """
+                )
+
+                # 为新字段创建索引
+                db_manager.execute(
+                    "CREATE INDEX IF NOT EXISTS idx_scholar_hidden ON scholars(is_hidden)"
+                )
+
+                db_manager.execute(
+                    "INSERT INTO db_version (version, description) VALUES (4, 'Added is_hidden field to replace is_main_scholar=2 functionality')"
+                )
+                db_manager.commit()
+                print("数据库升级完成：已添加 is_hidden 字段")
         except Exception as e:
             print(f"数据库升级失败: {str(e)}")
             db_manager.rollback()

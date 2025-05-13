@@ -342,16 +342,33 @@ class RelationshipDao:
             return True
 
         try:
+            # 用于去重的集合，防止双向关系重复
+            # 使用frozenset确保(A,B)和(B,A)被视为相同关系
+            processed_pairs = set()
+
             # 准备批量插入的数据
             values = []
             for source_id, target_id, relation_type, weight in relationship_data:
+                # 创建一个无序对表示这对关系
+                relation_pair = frozenset([source_id, target_id])
+
+                # 如果这对关系已经处理过，则跳过
+                if relation_pair in processed_pairs and relation_type == "coauthor":
+                    self.logger.debug(
+                        f"跳过重复的合作者关系: {source_id} - {target_id}"
+                    )
+                    continue
+
+                # 将关系对添加到已处理集合
+                processed_pairs.add(relation_pair)
+
                 # 源和目标类型默认为scholar
                 source_type = "scholar"
                 target_type = "scholar"
                 is_custom = 0  # 默认为非自定义
                 data_json = None
 
-                # 如果关系已存在，我们会依赖于INSERT OR IGNORE或UPSERT特性
+                # 添加到待插入数据
                 values.append(
                     (
                         source_id,
@@ -365,6 +382,10 @@ class RelationshipDao:
                     )
                 )
 
+            # 如果没有有效的关系数据，直接返回成功
+            if not values:
+                return True
+
             # 执行批量插入
             query = """
             INSERT OR REPLACE INTO relationships 
@@ -377,8 +398,12 @@ class RelationshipDao:
                 cursor.executemany(query, values)
                 conn.commit()
 
+            self.logger.info(f"成功批量创建 {len(values)} 条关系记录")
             return True
 
         except Exception as e:
             self.logger.error(f"批量创建关系记录时出错: {str(e)}")
+            import traceback
+
+            self.logger.error(traceback.format_exc())
             return False

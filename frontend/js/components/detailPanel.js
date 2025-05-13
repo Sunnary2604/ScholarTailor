@@ -4,7 +4,7 @@
  */
 
 import { getScholarById, reloadData } from "../dataManager.js";
-import { updateScholar, addScholarTag } from "../api.js";
+import { updateScholar, addScholarTag, toggleScholarHidden } from "../api.js";
 import { showStatusMessage } from "../utils.js";
 import eventBus from "../eventBus.js";
 import graphPanel from "../components/graphPanel.js";
@@ -519,7 +519,7 @@ function _updateButtons(scholarData) {
     }
   }
 
-  // 处理不感兴趣按钮
+  // 处理隐藏/显示按钮
   if (notInterestedBtn) {
     // 移除所有已有的点击事件监听器
     const newNotInterestedBtn = notInterestedBtn.cloneNode(true);
@@ -528,21 +528,19 @@ function _updateButtons(scholarData) {
       notInterestedBtn
     );
 
-    // 如果是不感兴趣的学者，显示"已标记为不感兴趣"
-    if (scholarData.is_main_scholar === 2) {
-      newNotInterestedBtn.textContent = "已隐藏";
-      newNotInterestedBtn.classList.add("disabled");
-      newNotInterestedBtn.disabled = true;
+    // 根据当前学者的隐藏状态设置按钮文本
+    if (scholarData.is_hidden === 1) {
+      newNotInterestedBtn.textContent = "显示";
+      newNotInterestedBtn.title = "将此学者设为可见";
     } else {
       newNotInterestedBtn.textContent = "隐藏";
-      newNotInterestedBtn.classList.remove("disabled");
-      newNotInterestedBtn.disabled = false;
-
-      // 添加新的事件监听器
-      newNotInterestedBtn.addEventListener("click", () => {
-        _handleNotInterested(newNotInterestedBtn, scholarData);
-      });
+      newNotInterestedBtn.title = "将此学者隐藏";
     }
+
+    // 添加新的事件监听器
+    newNotInterestedBtn.addEventListener("click", () => {
+      _handleNotInterested(newNotInterestedBtn, scholarData);
+    });
   }
 }
 
@@ -616,9 +614,9 @@ function _handleScholarFetch(button, scholarData) {
 }
 
 /**
- * 处理不感兴趣学者标记
+ * 处理隐藏/显示学者状态切换
  * @private
- * @param {HTMLElement} button - 不感兴趣按钮元素
+ * @param {HTMLElement} button - 隐藏/显示按钮元素
  * @param {Object} scholarData - 学者数据
  */
 function _handleNotInterested(button, scholarData) {
@@ -633,33 +631,36 @@ function _handleNotInterested(button, scholarData) {
   button.disabled = true;
   console.log(`DEBUGTAG: 按钮状态已设置为加载中`);
 
-  // 准备更新数据 - 设置is_main_scholar为2表示不感兴趣
-  const updateData = {
-    is_main_scholar: 2,
-  };
-  console.log(`DEBUGTAG: 准备更新数据 - updateData=`, updateData);
-
-  // 使用API更新学者信息，直接传递学者ID和更新数据
-  console.log(`DEBUGTAG: 调用updateScholar API - scholarId=${scholarData.id}`);
-  updateScholar(scholarData.id, updateData)
+  // 调用API切换学者的显示/隐藏状态
+  console.log(
+    `DEBUGTAG: 调用toggleScholarHidden API - scholarId=${scholarData.id}`
+  );
+  toggleScholarHidden(scholarData.id)
     .then((result) => {
-      console.log(`DEBUGTAG: updateScholar API返回结果:`, result);
+      console.log(`DEBUGTAG: toggleScholarHidden API返回结果:`, result);
 
       if (result.success) {
-        console.log(`DEBUGTAG: 更新成功 - 显示成功消息`);
-        showStatusMessage("已将该学者标记为不感兴趣", "success");
+        // 显示成功消息
+        const isHidden = result.is_hidden;
+        const actionText = isHidden ? "隐藏" : "显示";
+        console.log(
+          `DEBUGTAG: 切换成功 - 新状态: ${isHidden ? "隐藏" : "显示"}`
+        );
+        showStatusMessage(`已将该学者${actionText}`, "success");
 
-        // 更新按钮状态
-        button.textContent = "已标记为不感兴趣";
-        button.classList.add("disabled");
-        button.disabled = true;
-        console.log(`DEBUGTAG: 按钮状态已更新为已禁用`);
+        // 更新按钮状态和文本
+        button.textContent = isHidden ? "显示" : "隐藏";
+        button.title = isHidden ? "将此学者设为可见" : "将此学者隐藏";
+        button.disabled = false;
+        console.log(`DEBUGTAG: 按钮状态已更新 - 文本: ${button.textContent}`);
 
         // 更新本地数据
         if (window.scholars && window.scholars[scholarData.id]) {
-          window.scholars[scholarData.id].is_main_scholar = 2;
+          window.scholars[scholarData.id].is_hidden = isHidden ? 1 : 0;
           console.log(
-            `DEBUGTAG: 已更新本地缓存数据 - 学者${scholarData.id}.is_main_scholar=2`
+            `DEBUGTAG: 已更新本地缓存数据 - 学者${scholarData.id}.is_hidden=${
+              isHidden ? 1 : 0
+            }`
           );
         }
 
@@ -668,9 +669,11 @@ function _handleNotInterested(button, scholarData) {
           state.currentScholar &&
           state.currentScholar.id === scholarData.id
         ) {
-          state.currentScholar.is_main_scholar = 2;
+          state.currentScholar.is_hidden = isHidden ? 1 : 0;
           console.log(
-            `DEBUGTAG: 已更新当前状态 - currentScholar.is_main_scholar=2`
+            `DEBUGTAG: 已更新当前状态 - currentScholar.is_hidden=${
+              isHidden ? 1 : 0
+            }`
           );
         }
 
@@ -679,12 +682,22 @@ function _handleNotInterested(button, scholarData) {
         eventBus.emit("graph:updateNode", {
           id: scholarData.id,
           data: {
-            is_main_scholar: 2,
-            nodeType: "hidden", // 可以定义一个新的节点类型
+            is_hidden: isHidden ? 1 : 0,
+            nodeType: isHidden
+              ? "not-interested"
+              : scholarData.is_main_scholar === 1
+              ? "primary"
+              : "secondary",
           },
           classes: {
-            add: ["not-interested-node"],
-            remove: ["primary-node", "secondary-node"],
+            add: isHidden
+              ? ["not-interested-node"]
+              : scholarData.is_main_scholar === 1
+              ? ["primary-node"]
+              : ["secondary-node"],
+            remove: isHidden
+              ? ["primary-node", "secondary-node"]
+              : ["not-interested-node"],
           },
         });
 
@@ -692,7 +705,7 @@ function _handleNotInterested(button, scholarData) {
         console.log(`DEBUGTAG: 发出scholar:updated事件`);
         eventBus.emit("scholar:updated", {
           ...state.currentScholar,
-          is_main_scholar: 2,
+          is_hidden: isHidden ? 1 : 0,
         });
 
         // 重新加载数据并刷新图谱
@@ -700,7 +713,13 @@ function _handleNotInterested(button, scholarData) {
         reloadData()
           .then(() => {
             console.log(`DEBUGTAG: 数据重新加载成功`);
-            showStatusMessage("图谱已更新，该学者将被隐藏", "success");
+            // 添加调用graphPanel.applyOptimalLayout()重新布局图表
+            console.log(`DEBUGTAG: 应用最优图表布局`);
+            graphPanel.applyOptimalLayout();
+            showStatusMessage(
+              `图谱已更新，该学者将${isHidden ? "被隐藏" : "被显示"}`,
+              "success"
+            );
           })
           .catch((error) => {
             console.error(`DEBUGTAG: 刷新图谱失败:`, error);
@@ -713,7 +732,7 @@ function _handleNotInterested(button, scholarData) {
         button.disabled = false;
 
         showStatusMessage(
-          "标记不感兴趣失败: " + (result.error || "未知错误"),
+          "切换学者显示/隐藏状态失败: " + (result.error || "未知错误"),
           "error"
         );
       }
@@ -724,7 +743,7 @@ function _handleNotInterested(button, scholarData) {
       button.textContent = originalText;
       button.disabled = false;
 
-      showStatusMessage("标记不感兴趣时出错: " + error, "error");
+      showStatusMessage("切换学者显示/隐藏状态时出错: " + error, "error");
     });
 }
 

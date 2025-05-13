@@ -82,27 +82,27 @@ class DBManager:
 
     def execute(self, query, params=()):
         """执行SQL查询"""
-        print(f"DEBUGTAG: 执行SQL: {query}")
-        print(f"DEBUGTAG: SQL参数: {params}")
+        # print(f"DEBUGTAG: 执行SQL: {query}")
+        # print(f"DEBUGTAG: SQL参数: {params}")
         cursor = self.get_cursor()
         cursor.execute(query, params)
         affected_rows = cursor.rowcount
-        print(f"DEBUGTAG: SQL影响行数: {affected_rows}")
+        # print(f"DEBUGTAG: SQL影响行数: {affected_rows}")
         return cursor
 
     def executemany(self, query, params_list):
         """批量执行SQL查询"""
-        print(f"DEBUGTAG: 批量执行SQL: {query}")
-        print(f"DEBUGTAG: 参数数量: {len(params_list)}")
+        # print(f"DEBUGTAG: 批量执行SQL: {query}")
+        # print(f"DEBUGTAG: 参数数量: {len(params_list)}")
         cursor = self.get_cursor()
         cursor.executemany(query, params_list)
         affected_rows = cursor.rowcount
-        print(f"DEBUGTAG: 批量SQL影响行数: {affected_rows}")
+        # print(f"DEBUGTAG: 批量SQL影响行数: {affected_rows}")
         return cursor
 
     def commit(self):
         """提交事务"""
-        print(f"DEBUGTAG: 提交数据库事务")
+        # print(f"DEBUGTAG: 提交数据库事务")
         if self.connection:
             try:
                 # 首先检查是否有活动事务
@@ -112,14 +112,14 @@ class DBManager:
 
                 # 如果autocommit为1，表示没有活动事务
                 if autocommit and autocommit.get("1") == 1:
-                    print("DEBUGTAG: 没有活动事务，跳过提交")
+                    # print("DEBUGTAG: 没有活动事务，跳过提交")
                     return
 
                 # 否则提交事务
                 self.connection.commit()
-                print(f"DEBUGTAG: 事务提交完成")
+                # print(f"DEBUGTAG: 事务提交完成")
             except Exception as e:
-                print(f"DEBUGTAG: 事务提交异常: {str(e)}")
+                # print(f"DEBUGTAG: 事务提交异常: {str(e)}")
                 import traceback
 
                 print(traceback.format_exc())
@@ -152,7 +152,7 @@ class DBManager:
     # 事务支持
     def begin_transaction(self):
         """开始事务"""
-        print(f"DEBUGTAG: 尝试开始事务")
+        # print(f"DEBUGTAG: 尝试开始事务")
         try:
             # 检查是否已有活动事务
             cursor = self.get_cursor()
@@ -161,7 +161,7 @@ class DBManager:
 
             # 如果autocommit为0，表示已有活动事务
             if autocommit and autocommit.get("1") == 0:
-                print("DEBUGTAG: 已有活动事务，跳过BEGIN TRANSACTION")
+                # print("DEBUGTAG: 已有活动事务，跳过BEGIN TRANSACTION")
                 return
 
             # 开始新事务
@@ -172,12 +172,12 @@ class DBManager:
 
     def end_transaction(self):
         """结束事务并提交"""
-        print(f"DEBUGTAG: 结束事务")
+        #  print(f"DEBUGTAG: 结束事务")
         self.commit()
 
     def rollback(self):
         """回滚事务"""
-        print(f"DEBUGTAG: 尝试回滚事务")
+        # print(f"DEBUGTAG: 尝试回滚事务")
         if self.connection:
             try:
                 # 首先检查是否有活动事务

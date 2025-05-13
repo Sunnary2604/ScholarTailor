@@ -163,6 +163,20 @@ function initGraph(containerId, data, perfOptions = {}) {
           },
         },
         {
+          selector:
+            'node[nodeType="not-interested"], node[group="not-interested"]',
+          style: {
+            "background-color": "rgb(180, 180, 180)", // 灰色作为不感兴趣的节点
+            "background-opacity": 0.6,
+            "border-width": 1,
+            "border-color": "rgb(130, 130, 130)", // 深灰色边框
+            width: 16, // 更小的节点尺寸
+            height: 16, // 更小的节点尺寸
+            color: "#777", // 文字颜色更浅
+            "text-opacity": 0.7, // 文字更透明
+          },
+        },
+        {
           selector: "edge",
           style: {
             width: 1, // 适中的宽度
@@ -414,31 +428,8 @@ function setupEventListeners(cyInstance) {
         '<i class="fas fa-spinner fa-spin"></i> 应用中...';
       resetLayoutBtn.disabled = true;
 
-      // 应用fcose布局
-      const layout = applyLayout("fcose");
-
-      // 等待布局完成后恢复按钮状态
-      if (layout && layout.on) {
-        layout.on("layoutstop", function () {
-          // 布局完成后调整节点大小
-          adjustNodeSizeByConnections();
-
-          resetLayoutBtn.innerHTML = '<i class="fas fa-sync-alt"></i> 重新布局';
-          resetLayoutBtn.disabled = false;
-
-          // 显示成功消息
-          showStatusMessage("布局已重新应用", "success");
-        });
-      } else {
-        // 如果layout对象未正确返回，3秒后恢复按钮状态
-        setTimeout(function () {
-          // 尝试调整节点大小
-          adjustNodeSizeByConnections();
-
-          resetLayoutBtn.innerHTML = '<i class="fas fa-sync-alt"></i> 重新布局';
-          resetLayoutBtn.disabled = false;
-        }, 3000);
-      }
+      // 应用最优布局
+      applyOptimalLayout(resetLayoutBtn);
     });
   }
 
@@ -459,6 +450,92 @@ function setupEventListeners(cyInstance) {
       graphViewBtn.classList.add("hidden");
     });
   }
+}
+
+/**
+ * 应用最优布局设置
+ * @param {HTMLElement} [button] - 可选的按钮元素，用于在布局完成后恢复状态
+ * @returns {Object} 布局实例
+ */
+function applyOptimalLayout(button = null) {
+  if (!state.cyInstance) {
+    console.error("无法应用布局：图谱实例未初始化");
+    return null;
+  }
+
+  // 应用fcose布局
+  const layout = state.cyInstance.elements().layout(getFCoseLayoutOptions());
+
+  // 启动布局
+  layout.run();
+
+  // 等待布局完成后调整节点大小并恢复按钮状态
+  if (layout && layout.on) {
+    layout.on("layoutstop", function () {
+      // 布局完成后调整节点大小
+      adjustNodeSizeByConnections();
+
+      // 如果提供了按钮，恢复按钮状态
+      if (button) {
+        button.innerHTML = '<i class="fas fa-sync-alt"></i> 重新布局';
+        button.disabled = false;
+
+        // 显示成功消息
+        showStatusMessage("布局已重新应用", "success");
+      }
+    });
+  } else {
+    // 如果layout对象未正确返回，直接调整节点大小
+    setTimeout(function () {
+      // 尝试调整节点大小
+      adjustNodeSizeByConnections();
+
+      // 如果提供了按钮，恢复按钮状态
+      if (button) {
+        button.innerHTML = '<i class="fas fa-sync-alt"></i> 重新布局';
+        button.disabled = false;
+      }
+    }, 1000);
+  }
+
+  return layout;
+}
+
+/**
+ * 应用指定的布局
+ * @param {string} layoutName - 布局名称
+ * @returns {Object} - 布局实例
+ */
+function applyLayout(layoutName = "fcose") {
+  if (!state.cyInstance) {
+    console.error("无法应用布局：图谱实例未初始化");
+    return null;
+  }
+
+  // 对于fcose布局，使用优化的applyOptimalLayout函数
+  if (layoutName === "fcose") {
+    return applyOptimalLayout();
+  }
+
+  // 对于其他布局，使用原有逻辑
+  const layoutConfig = getFCoseLayoutOptions();
+  layoutConfig.name = layoutName;
+
+  // 配置动画
+  layoutConfig.animate = true;
+  layoutConfig.animationDuration = 800;
+  layoutConfig.animationEasing = "ease-in-out";
+
+  console.log("应用布局:", layoutName);
+
+  // 应用布局到可见元素
+  const visibleElements = state.cyInstance.elements().not(".hidden");
+  const layout = visibleElements.layout(layoutConfig);
+
+  // 启动布局
+  layout.run();
+
+  return layout;
 }
 
 /**
@@ -787,37 +864,6 @@ function highlightNodesByTag(tag) {
   }
 }
 
-/**
- * 应用指定的布局
- * @param {string} layoutName - 布局名称
- * @returns {Object} - 布局实例
- */
-function applyLayout(layoutName = "fcose") {
-  if (!state.cyInstance) {
-    console.error("无法应用布局：图谱实例未初始化");
-    return null;
-  }
-
-  // 获取布局配置
-  const layoutConfig = getFCoseLayoutOptions();
-
-  // 配置动画
-  layoutConfig.animate = true;
-  layoutConfig.animationDuration = 800;
-  layoutConfig.animationEasing = "ease-in-out";
-
-  console.log("应用布局:", layoutName);
-
-  // 应用布局到可见元素
-  const visibleElements = state.cyInstance.elements().not(".hidden");
-  const layout = visibleElements.layout(layoutConfig);
-
-  // 启动布局
-  layout.run();
-
-  return layout;
-}
-
 // 组件公开API
 export default {
   // 初始化组件
@@ -848,6 +894,11 @@ export default {
   // 应用布局
   applyLayout(layoutName = "fcose") {
     return applyLayout(layoutName);
+  },
+
+  // 应用最优布局设置
+  applyOptimalLayout(button = null) {
+    return applyOptimalLayout(button);
   },
 
   // 调整节点大小

@@ -106,7 +106,8 @@ class PublicationDao:
             except:
                 year = None
 
-            venue = bib.get("venue", "")
+            # 增强venue提取逻辑，尝试从多个可能的字段中获取
+            venue = bib.get("citation", "")
             citation_text = self._format_citation_text(bib)
             num_citations = pub_data.get("num_citations", pub_data.get("citedby", 0))
             citedby_url = pub_data.get("citedby_url", "")

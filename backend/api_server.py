@@ -236,35 +236,24 @@ def update_scholar():
     }
     """
     try:
-        app.logger.info(f"DEBUGTAG: 接收到scholars/update请求")
         data = request.json
-        app.logger.info(f"DEBUGTAG: 请求内容: {data}")
 
         # 验证参数
         if not data or "id" not in data:
-            app.logger.error(f"DEBUGTAG: 缺少必要参数")
             return jsonify({"success": False, "error": "缺少必要参数"})
 
         # 获取参数
         scholar_id = data.get("id")
         is_main_scholar = data.get("is_main_scholar")
-        app.logger.info(
-            f"DEBUGTAG: 解析参数 - scholar_id={scholar_id}, is_main_scholar={is_main_scholar}"
-        )
 
         # 记录操作
         if is_main_scholar is not None:
-            app.logger.info(
-                f"DEBUGTAG: 更新学者状态: id={scholar_id}, is_main_scholar={is_main_scholar}"
-            )
             # 更新学者状态 - 直接使用update_scholar, 传递状态值
             result = scholar_service.update_scholar(scholar_id, is_main_scholar)
-            app.logger.info(f"DEBUGTAG: 学者状态更新返回结果: {result}")
 
             # 如果更新成功，重新生成网络数据
             if result["success"]:
                 try:
-                    app.logger.info(f"DEBUGTAG: 重新生成网络数据")
                     data_service.regenerate_network_data()
                 except Exception as regen_error:
                     app.logger.warning(
@@ -272,18 +261,14 @@ def update_scholar():
                     )
                     # 不中断流程，继续返回成功结果
 
-            app.logger.info(f"DEBUGTAG: 返回响应: {result}")
             return jsonify(result)
         else:
             # 执行标准的学者更新操作（爬取详细数据）
-            app.logger.info(f"DEBUGTAG: 爬取学者详细数据: id={scholar_id}")
             result = scholar_service.update_scholar(scholar_id)
-            app.logger.info(f"DEBUGTAG: 学者更新返回结果: {result}")
 
             # 如果更新成功，重新生成网络数据
             if result["success"]:
                 try:
-                    app.logger.info(f"DEBUGTAG: 重新生成网络数据")
                     data_service.regenerate_network_data()
                 except Exception as regen_error:
                     app.logger.warning(
@@ -291,7 +276,6 @@ def update_scholar():
                     )
                     # 不中断流程，继续返回成功结果
 
-            app.logger.info(f"DEBUGTAG: 返回响应: {result}")
             return jsonify(result)
 
     except Exception as e:
@@ -342,8 +326,6 @@ def add_relationship():
         or "type" not in data
     ):
         return resp.error("缺少必要参数", 400)
-
-    app.logger.info(f"收到添加关系请求: {data}")
 
     result = relationship_service.add_relationship(
         data["source_id"], data["target_id"], data["type"], data.get("is_custom", True)
@@ -515,6 +497,39 @@ def convert_to_main_scholar():
         data_service.regenerate_network_data()
 
     return resp.from_result(result, resp.COMMON_ERROR_MAPPING)
+
+
+# API端点：切换学者显示/隐藏状态
+@app.route("/api/scholars/toggle-hidden", methods=["POST"])
+def toggle_scholar_hidden():
+    data = request.json
+    if not data or "scholar_id" not in data:
+        return resp.error("缺少学者ID", 400)
+
+    try:
+        scholar_id = data["scholar_id"]
+        app.logger.info(f"接收到学者显示/隐藏状态切换请求，scholar_id: {scholar_id}")
+
+        # 调用scholar_dao的toggle_scholar_hidden方法
+        result = scholar_service.scholar_dao.toggle_scholar_hidden(scholar_id)
+
+        if result["success"]:
+            # 重新生成网络数据
+            data_service.regenerate_network_data()
+            app.logger.info(
+                f"成功切换学者 {scholar_id} 的显示/隐藏状态: {result.get('is_hidden')}"
+            )
+        else:
+            app.logger.error(
+                f"切换学者 {scholar_id} 的显示/隐藏状态失败: {result.get('error')}"
+            )
+
+        return resp.from_result(result, resp.COMMON_ERROR_MAPPING)
+
+    except Exception as e:
+        error_msg = f"切换学者显示/隐藏状态时出错: {str(e)}"
+        app.logger.error(error_msg)
+        return resp.error(error_msg, 500)
 
 
 # 全局错误处理
