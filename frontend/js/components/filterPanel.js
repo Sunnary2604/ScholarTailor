@@ -557,15 +557,6 @@ function applyAdvancedFilterViaAPI(filterParams) {
           `筛选成功：找到 ${data.data.nodes.length} 个学者节点`,
           "success"
         );
-
-        // 导入graphPanel模块并应用最优布局
-        import("../components/graphPanel.js").then((graphPanelModule) => {
-          const graphPanel = graphPanelModule.default;
-          // 延迟一些时间等待图谱更新完成
-          setTimeout(() => {
-            graphPanel.applyOptimalLayout();
-          }, 500);
-        });
       } else {
         showFilterStatus(`筛选错误：${data.error || "未知错误"}`, "error");
         // 出错时应用基本筛选

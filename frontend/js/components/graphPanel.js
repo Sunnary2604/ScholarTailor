@@ -41,30 +41,101 @@ const elements = {
 function getFCoseLayoutOptions() {
   return {
     name: "fcose", // 名称
-    quality: "default", // 质量 - 'draft', 'default', 'proof'
-    randomize: true, // 是否使用随机初始布局
-    animate: true, // 是否使用动画
-    animationDuration: 2000, // 动画持续时间
-    animationEasing: "ease-in-out", // 动画缓动函数
-    fit: true, // 适应视图
-    padding: 80, // 填充
-    nodeRepulsion: 12000, // 节点间斥力
-    idealEdgeLength: 300, // 理想边长
-    nestingFactor: 0.1, // 嵌套因子
-    gravity: 0.5, // 重力
-    gravityRange: 4, // 重力范围
-    numIter: 5000, // 迭代次数
-    initialTemp: 100, // 初始温度
-    coolingFactor: 0.99, // 冷却因子
-    minTemp: 1.0, // 最小温度
-    nodeDimensionsIncludeLabels: true, // 节点尺寸包含标签
-    uniformNodeDimensions: false, // 统一节点尺寸
-    packComponents: true, // 打包组件
-    samplingType: true, // 采样类型
-    sampleSize: 100, // 样本大小
-    avoidOverlap: true, // 避免重叠
-    avoidOverlapPadding: 50, // 避免重叠填充
-    nodeEdgeWeightInfluence: 0.5, // 节点边权重影响
+    quality: "proof", // 将quality从default提高到proof，提供更精确的布局
+    // Use random node positions at beginning of layout
+    // if this is set to false, then quality option must be "proof"
+    randomize: true,
+    // Whether or not to animate the layout
+    animate: true,
+    // Duration of animation in ms, if enabled
+    animationDuration: 3000,
+    // Easing of animation, if enabled
+    animationEasing: "ease-in-out",
+    // Fit the viewport to the repositioned nodes
+    fit: true,
+    // Padding around layout
+    padding: 40, // 增加padding，确保节点不会太靠近边缘
+    // Whether to include labels in node dimensions. Valid in "proof" quality
+    nodeDimensionsIncludeLabels: true, // 修改为true以考虑标签尺寸避免文字重叠
+    // Whether or not simple nodes (non-compound nodes) are of uniform dimensions
+    uniformNodeDimensions: false,
+    // Whether to pack disconnected components - cytoscape-layout-utilities extension should be registered and initialized
+    packComponents: true,
+    // Layout step - all, transformed, enforced, cose - for debug purpose only
+    step: "all",
+
+    /* spectral layout options */
+
+    // False for random, true for greedy sampling
+    samplingType: true,
+    // Sample size to construct distance matrix
+    sampleSize: 100,
+    // Separation amount between nodes
+    nodeSeparation: 50, // 增加节点间隔
+    // Power iteration tolerance
+    piTol: 0.0000001,
+
+    /* incremental layout options */
+
+    // Node repulsion (non overlapping) multiplier
+    nodeRepulsion: 100000,
+    // Ideal edge (non nested) length
+    idealEdgeLength: 300,
+    // Divisor to compute edge forces
+    edgeElasticity: 0.1, // 增加弹性，让边的拉力更强
+    // Nesting factor (multiplier) to compute ideal edge length for nested edges
+    nestingFactor: 0.1,
+    // Maximum number of iterations to perform - this is a suggested value and might be adjusted by the algorithm as required
+    numIter: 3000, // 增加迭代次数，让算法有更多机会找到最优解
+    // For enabling tiling
+    tile: true,
+
+    tilingPaddingVertical: 50, // 增加垂直间距
+    // Represents the amount of the horizontal space to put between the zero degree members during the tiling operation(can also be a function)
+    tilingPaddingHorizontal: 50, // 增加水平间距
+    // Gravity force (constant)
+    gravity: 0.8, // 增加引力，防止节点分散太远
+    // Gravity range (constant) for compounds
+    gravityRangeCompound: 1.5,
+    // Gravity force (constant) for compounds
+    gravityCompound: 1.0,
+    // Gravity range (constant)
+    gravityRange: 15.0, // 增加引力范围，让边缘节点更容易受到引力影响
+    // Initial cooling factor for incremental layout
+    initialEnergyOnIncremental: 5, // 增加初始能量，让节点有更大的移动空间
+    // relativePlacementConstraint: (function () {
+    //   const constraints = [];
+    //   const cy = window.cy;
+
+    //   if (!cy) return undefined;
+
+    //   // 获取所有主节点
+    //   const primaryNodes = cy
+    //     .nodes()
+    //     .filter((node) => node.data("nodeType") === "primary");
+
+    //   // 如果主节点少于2个，不需要约束
+    //   if (primaryNodes.length < 2) return undefined;
+
+    //   // 为每对主节点创建相对位置约束，确保它们之间有足够的间距
+    //   for (let i = 0; i < primaryNodes.length; i++) {
+    //     for (let j = i + 1; j < primaryNodes.length; j++) {
+    //       constraints.push({
+    //         left: primaryNodes[i].id(),
+    //         right: primaryNodes[j].id(),
+    //         gap: 30, // 水平方向上的最小间距
+    //       });
+
+    //       constraints.push({
+    //         top: primaryNodes[i].id(),
+    //         bottom: primaryNodes[j].id(),
+    //         gap: 30, // 垂直方向上的最小间距
+    //       });
+    //     }
+    //   }
+
+    //   return constraints.length > 0 ? constraints : undefined;
+    // })(),
   };
 }
 
@@ -204,9 +275,8 @@ function initGraph(containerId, data, perfOptions = {}) {
           selector: 'edge[relationType="coauthor"]',
           style: {
             "line-color": "rgb(120, 160, 210)", // 低饱和度蓝色
-            "line-opacity": 0.6,
+            "line-opacity": 0.5,
             "target-arrow-color": "rgb(120, 160, 210)",
-       
           },
         },
         {
@@ -289,7 +359,7 @@ function initGraph(containerId, data, perfOptions = {}) {
         {
           selector: ".faded",
           style: {
-            opacity: 0.08, // 更淡的背景使高亮更显著
+            opacity: 0.15, // 更淡的背景使高亮更显著
           },
         },
         // 隐藏元素样式
@@ -780,37 +850,66 @@ function adjustNodeSizeByConnections(cy) {
   const cyToUse = cy || state.cyInstance;
   if (!cyToUse) return;
 
-  // 先计算连接数范围
-  let maxConnections = 1;
-  cyToUse.nodes().forEach((node) => {
-    const connections = node.connectedEdges().length;
-    maxConnections = Math.max(maxConnections, connections);
-  });
+  // 设置引用数的阈值
+  const MIN_CITATIONS = 100; // 低于此值使用最小尺寸
+  const MAX_CITATIONS = 10000; // 高于此值使用最大尺寸
+
+  // 设置节点尺寸范围
+  const PRIMARY_MIN_SIZE = 15;
+  const PRIMARY_MAX_SIZE = 50;
+  const SECONDARY_SIZE = 10;
 
   cyToUse.nodes().forEach((node) => {
-    const connections = node.connectedEdges().length;
+    const citations = node.data("citations") || node.data("citedby") || 0;
     const nodeType = node.data("nodeType");
 
-    // 节点基础大小
-    let minSize = nodeType === "primary" ? 30 : 18;
-    let maxSize = nodeType === "primary" ? 50 : 36;
+    // 确定节点大小
+    let size;
 
-    // 连接数权重因子 (0-1)
-    const connectionFactor =
-      maxConnections > 1 ? connections / maxConnections : 0;
+    if (nodeType === "primary") {
+      if (citations >= MAX_CITATIONS) {
+        // 大于最大阈值，使用最大尺寸
+        size = PRIMARY_MAX_SIZE;
+      } else if (citations <= MIN_CITATIONS) {
+        // 小于最小阈值，使用最小尺寸
+        size = PRIMARY_MIN_SIZE;
+      } else {
+        // 中间范围使用对数映射
+        // 将 MIN_CITATIONS 到 MAX_CITATIONS 的范围映射到 PRIMARY_MIN_SIZE 到 PRIMARY_MAX_SIZE
+        const logMin = Math.log10(MIN_CITATIONS);
+        const logMax = Math.log10(MAX_CITATIONS);
+        const logCurrent = Math.log10(citations);
 
-    // 根据连接数调整尺寸
-    const size = minSize + connectionFactor * (maxSize - minSize);
+        // 计算归一化的位置 (0-1)
+        const normalizedPos = (logCurrent - logMin) / (logMax - logMin);
+
+        // 映射到尺寸范围
+        size =
+          PRIMARY_MIN_SIZE +
+          normalizedPos * (PRIMARY_MAX_SIZE - PRIMARY_MIN_SIZE);
+      }
+    } else {
+      // 次要节点固定大小
+      size = SECONDARY_SIZE;
+    }
 
     // 设置节点大小
     node.style({
       width: size,
       height: size,
-      "font-size": 10 + connectionFactor * 3, // 根据节点大小调整字体
+      "font-size": size > 30 ? 13 : 10, // 较大节点使用大一点的字体
     });
 
-    // 存储节点的权重到数据中，方便其他地方使用
-    node.data("weight", 1 + connectionFactor * 2);
+    // 计算并存储节点权重
+    const weight =
+      nodeType === "primary"
+        ? citations >= MAX_CITATIONS
+          ? 3
+          : citations > MIN_CITATIONS
+          ? 2
+          : 1
+        : 0.7;
+    node.data("weight", weight);
   });
 }
 
