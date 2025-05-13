@@ -107,11 +107,11 @@ class DBManager:
             try:
                 # 首先检查是否有活动事务
                 cursor = self.get_cursor()
-                cursor.execute("SELECT 1 FROM pragma_get_autocommit()")
+                cursor.execute("PRAGMA autocommit")
                 autocommit = cursor.fetchone()
 
                 # 如果autocommit为1，表示没有活动事务
-                if autocommit and autocommit.get("1") == 1:
+                if autocommit and autocommit.get("autocommit") == 1:
                     # print("DEBUGTAG: 没有活动事务，跳过提交")
                     return
 
@@ -156,11 +156,11 @@ class DBManager:
         try:
             # 检查是否已有活动事务
             cursor = self.get_cursor()
-            cursor.execute("SELECT 1 FROM pragma_get_autocommit()")
+            cursor.execute("PRAGMA autocommit")
             autocommit = cursor.fetchone()
 
             # 如果autocommit为0，表示已有活动事务
-            if autocommit and autocommit.get("1") == 0:
+            if autocommit and autocommit.get("autocommit") == 0:
                 # print("DEBUGTAG: 已有活动事务，跳过BEGIN TRANSACTION")
                 return
 
@@ -182,11 +182,11 @@ class DBManager:
             try:
                 # 首先检查是否有活动事务
                 cursor = self.get_cursor()
-                cursor.execute("SELECT 1 FROM pragma_get_autocommit()")
+                cursor.execute("PRAGMA autocommit")
                 autocommit = cursor.fetchone()
 
                 # 如果autocommit为1，表示没有活动事务
-                if autocommit and autocommit.get("1") == 1:
+                if autocommit and autocommit.get("autocommit") == 1:
                     print("DEBUGTAG: 没有活动事务，跳过回滚")
                     return
 

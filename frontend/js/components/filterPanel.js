@@ -30,7 +30,6 @@ const state = {
 // DOM元素引用
 const elements = {
   panel: () => document.getElementById("filter-panel"),
-  overlay: () => document.getElementById("filter-overlay"),
   closeBtn: () => document.getElementById("close-filter-panel"),
   applyBtn: () => document.getElementById("apply-filters-btn"),
   resetBtn: () => document.getElementById("reset-filters-btn"),
@@ -47,22 +46,40 @@ const elements = {
     document.getElementById("custom-filters-container"),
   statusMessage: () => document.getElementById("filter-status"),
   tagFiltersContainer: () => document.querySelector(".tag-filters"),
+  modalContent: () => document.querySelector("#filter-panel .modal-content"),
 };
 
 // 渲染函数 - 根据状态更新UI
 function render() {
   const panel = elements.panel();
-  const overlay = elements.overlay();
+  const modalContent = elements.modalContent();
 
-  if (!panel || !overlay) return;
+  if (!panel) return;
 
   // 更新面板可见性
   if (state.isVisible) {
+    // 显示面板
+    panel.style.display = "flex";
     panel.classList.add("visible");
-    overlay.classList.add("visible");
+
+    // 添加内容动画效果
+    if (modalContent) {
+      setTimeout(() => {
+        modalContent.classList.add("visible");
+      }, 10);
+    }
   } else {
+    // 移除可见类
     panel.classList.remove("visible");
-    overlay.classList.remove("visible");
+
+    if (modalContent) {
+      modalContent.classList.remove("visible");
+    }
+
+    // 延迟隐藏，以便动画完成
+    setTimeout(() => {
+      panel.style.display = "none";
+    }, 300);
   }
 
   // 更新筛选条件
@@ -839,13 +856,25 @@ function setupEventListeners() {
   // 关闭筛选面板
   const closeBtn = elements.closeBtn();
   if (closeBtn) {
-    closeBtn.addEventListener("click", hide);
+    closeBtn.addEventListener("mousedown", hide);
   }
 
-  // 点击遮罩层关闭筛选面板
-  const overlay = elements.overlay();
-  if (overlay) {
-    overlay.addEventListener("click", hide);
+  // 点击面板背景关闭 - 使用mousedown事件替代click事件
+  const panel = elements.panel();
+  if (panel) {
+    panel.addEventListener("mousedown", (event) => {
+      if (event.target === panel) {
+        hide();
+      }
+    });
+  }
+
+  // 防止模态内容点击事件冒泡
+  const modalContent = elements.modalContent();
+  if (modalContent) {
+    modalContent.addEventListener("mousedown", (event) => {
+      event.stopPropagation();
+    });
   }
 
   // 滑块值实时更新
@@ -887,6 +916,13 @@ function setupEventListeners() {
   // 监听数据加载事件
   eventBus.on("data:loaded", () => {
     setupTagFiltering();
+  });
+
+  // ESC键关闭面板
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && state.isVisible) {
+      hide();
+    }
   });
 }
 

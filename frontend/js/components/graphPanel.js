@@ -157,7 +157,9 @@ function initGraph(containerId, data, perfOptions = {}) {
           selector: 'node[nodeType="secondary"]',
           style: {
             "background-color": "rgb(174, 207, 244)", // 淡蓝色作为次要节点
-            "background-opacity": 0.8,
+            "background-opacity": 1,
+
+            opacity: 1,
             "border-width": 1,
             "border-color": "rgb(103, 136, 173)", // 中等蓝色边框
             width: 18, // 减小次要节点尺寸
@@ -202,9 +204,9 @@ function initGraph(containerId, data, perfOptions = {}) {
           selector: 'edge[relationType="coauthor"]',
           style: {
             "line-color": "rgb(120, 160, 210)", // 低饱和度蓝色
-            "line-opacity": 0.7,
+            "line-opacity": 0.6,
             "target-arrow-color": "rgb(120, 160, 210)",
-            "target-arrow-opacity": 0.7,
+       
           },
         },
         {
@@ -243,7 +245,7 @@ function initGraph(containerId, data, perfOptions = {}) {
           selector: "node.hover",
           style: {
             "border-width": 2,
-            "border-color": "#FFFFFF",
+            "border-color": "#FF5722",
             "border-opacity": 0.9,
             "z-index": 998, // 确保悬停的节点在较上层
           },
